@@ -78,7 +78,7 @@ if __name__ == "__main__":
         print("LSTM WT model with NT_AvSGD low LR")
         model = LM_LSTM_WT_VD(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
         model.apply(init_weights)
-        optimizer = NT_AvSGD(model, lr=0.5, n=5, dev_loader=dev_loader, criterion_eval=criterion)
+        optimizer = NT_AvSGD(model, lr=0.5, dev_loader=dev_loader, criterion_eval=criterion)
         train(model, optimizer, "LSTM_NT_AvSGD_lowLR", lang, train_loader, dev_loader, test_loader, device=device, patience=10)
 
     # LSTM NT_AvSGD
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         print("LSTM model with NT_AvSGD")
         model = LM_LSTM_WT_VD(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
         model.apply(init_weights)
-        optimizer = NT_AvSGD(model, lr=1, n=5, dev_loader=dev_loader, criterion_eval=criterion)
+        optimizer = NT_AvSGD(model, lr=1, dev_loader=dev_loader, criterion_eval=criterion)
         train(model, optimizer, "LSTM_NT_AvSGD", lang, train_loader, dev_loader, test_loader, device=device, patience=10)
 
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         print("LSTM model with NT_AvSGD and higher LR")
         model = LM_LSTM_WT_VD(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
         model.apply(init_weights)
-        optimizer = NT_AvSGD(model, lr=2, n=5, dev_loader=dev_loader, criterion_eval=criterion)
+        optimizer = NT_AvSGD(model, lr=2, dev_loader=dev_loader, criterion_eval=criterion)
         train(model, optimizer, "LSTM_NT_AvSGD_higherLR", lang, train_loader, dev_loader, test_loader, device=device, patience=10)
     
     # LSTM NT_AvSGD even higher LR
@@ -103,5 +103,5 @@ if __name__ == "__main__":
         print("LSTM model with NT_AvSGD and even higher LR")
         model = LM_LSTM_WT_VD(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
         model.apply(init_weights)
-        optimizer = NT_AvSGD(model, lr=2.5, n=5, dev_loader=dev_loader, criterion_eval=criterion)
+        optimizer = NT_AvSGD(model, lr=2.5, dev_loader=dev_loader, criterion_eval=criterion)
         train(model, optimizer, "LSTM_NT_AvSGD_even_higherLR", lang, train_loader, dev_loader, test_loader, device=device, patience=10)

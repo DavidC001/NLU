@@ -13,7 +13,7 @@ from functools import partial
 from torch import optim
 
 class NT_AvSGD(optim.ASGD):
-    def __init__(self, model, dev_loader, criterion_eval, lr=1, L=100, n=5):
+    def __init__(self, model, dev_loader, criterion_eval, lr=1, L=165, n=5):
         super(NT_AvSGD, self).__init__(model.parameters(), lr=lr, t0=math.inf)
         self.temp = {}
         self.logs = []
