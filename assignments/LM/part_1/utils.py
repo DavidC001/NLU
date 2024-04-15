@@ -10,6 +10,16 @@ from functools import partial
 # Loading the corpus
 
 def read_file(path, eos_token="<eos>"):
+    """
+    Read a file and return a list of sentences
+
+    Args:
+        path: str, path to the file
+        eos_token: str, end of sentence token
+
+    Returns:
+        list of sentences
+    """
     output = []
     with open(path, "r") as f:
         for line in f.readlines():
@@ -18,6 +28,17 @@ def read_file(path, eos_token="<eos>"):
 
 # Vocab with tokens to ids
 def get_vocab(corpus, special_tokens=[]):
+    """
+    Returns a dictionary containing the vocabulary of the given corpus.
+
+    Args:
+        corpus (list): A list of sentences representing the corpus.
+        special_tokens (list, optional): A list of special tokens to include in the vocabulary. Defaults to an empty list.
+
+    Returns:
+        dict: A dictionary where the keys are the unique words in the corpus (including special tokens) and the values are their corresponding indices.
+
+    """
     output = {}
     i = 0
     for st in special_tokens:
@@ -33,10 +54,38 @@ def get_vocab(corpus, special_tokens=[]):
 # This class computes and stores our vocab
 # Word to ids and ids to word
 class Lang():
+    """
+    Class used to compute and store our vocab
+    Word to ids and ids to word
+
+    Args:
+        corpus (list): A list of sentences representing the corpus.
+        special_tokens (list, optional): A list of special tokens to include in the vocabulary. Defaults to an empty list.
+
+    Attributes:
+        word2id (dict): A dictionary mapping words to their corresponding IDs.
+        id2word (dict): A dictionary mapping IDs to their corresponding words.
+
+    Methods:
+        get_vocab(corpus, special_tokens=[]): Returns a dictionary mapping words to their corresponding IDs.
+
+    """
     def __init__(self, corpus, special_tokens=[]):
         self.word2id = self.get_vocab(corpus, special_tokens)
         self.id2word = {v:k for k, v in self.word2id.items()}
+
     def get_vocab(self, corpus, special_tokens=[]):
+        """
+        Returns a dictionary containing the vocabulary of the given corpus.
+
+        Args:
+            corpus (list): A list of sentences representing the corpus.
+            special_tokens (list, optional): A list of special tokens to include in the vocabulary. Defaults to an empty list.
+
+        Returns:
+            dict: A dictionary where the keys are the unique words in the corpus (including special tokens) and the values are their corresponding indices.
+
+        """
         output = {}
         i = 0
         for st in special_tokens:
@@ -51,6 +100,25 @@ class Lang():
 
 
 class PennTreeBank (data.Dataset):
+    """
+    A PyTorch Dataset class for processing the Penn Treebank corpus.
+
+    Args:
+        corpus (list): List of sentences in the corpus.
+        lang (Lang): Language object containing word-to-id mappings.
+
+    Attributes:
+        source (list): List of source sentences in the corpus.
+        target (list): List of target sentences in the corpus.
+        source_ids (list): List of source sentence IDs after mapping to word IDs.
+        target_ids (list): List of target sentence IDs after mapping to word IDs.
+
+    Methods:
+        __len__(self): Returns the number of sentences in the corpus.
+        __getitem__(self, idx): Returns the source and target sentences at the given index.
+        mapping_seq(self, data, lang): Maps sequences of tokens to their corresponding IDs using the given language object.
+    """
+
     # Mandatory methods are __init__, __len__ and __getitem__
     def __init__(self, corpus, lang):
         self.source = []
@@ -90,6 +158,17 @@ class PennTreeBank (data.Dataset):
         return res
 
 def collate_fn(data, pad_token, device):
+    """
+    Collate function used to merge a list of samples into a batch.
+
+    Args:
+        data (list): A list of samples.
+        pad_token (int): The ID of the padding token.
+        device (str): The device to use (e.g., 'cpu' or 'cuda').
+        
+    Returns:
+        dict: A dictionary containing the source and target sequences, as well as the number of tokens in the batch.
+    """
     def merge(sequences):
         '''
         merge from batch * sent_len to batch * max_len
@@ -122,6 +201,18 @@ def collate_fn(data, pad_token, device):
     return new_item
 
 def getDataLoaders(batch_size=256, device='cpu'):
+    """
+    Returns data loaders for training, development, and testing datasets.
+
+    Args:
+        batch_size (int): The batch size for the data loaders. Default is 256.
+        device (str): The device to load the data on. Default is 'cpu'.
+
+    Returns:
+        tuple: A tuple containing the training data loader, development data loader,
+               testing data loader, and the language object.
+
+    """
     train_raw = read_file("../dataset/PennTreeBank/ptb.train.txt")
     dev_raw = read_file("../dataset/PennTreeBank/ptb.valid.txt")
     test_raw = read_file("../dataset/PennTreeBank/ptb.test.txt")

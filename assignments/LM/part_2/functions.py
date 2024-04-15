@@ -13,6 +13,30 @@ from functools import partial
 from torch import optim
 
 class NT_AvSGD(optim.ASGD):
+    """
+    Implementation of Non-Monotonically Triggered Average Stochastic Gradient Descent (NT_AvSGD).
+
+    Args:
+        model (torch.nn.Module): The neural network model.
+        dev_loader (torch.utils.data.DataLoader): The data loader for the validation set.
+        criterion_eval (torch.nn.Module): The evaluation criterion.
+        lr (float, optional): The learning rate (default: 1).
+        L (int, optional): The number of iterations between validation checks (default: 165).
+        n (int, optional): The number of previous validation checks to consider for non-monotonicity (default: 5).
+
+    Attributes:
+        temp (dict): A dictionary to store temporary parameter data during averaging.
+        logs (list): A list to store the validation perplexity values.
+        dev_loader (torch.utils.data.DataLoader): The data loader for the validation set.
+        T (int): The iteration at which averaging is triggered.
+        t (int): The number of cycles completed.
+        k (int): The current iteration.
+        L (int): The number of iterations between validation checks.
+        n (int): The number of previous validation checks to consider for non-monotonicity.
+        model (torch.nn.Module): The neural network model.
+        criterion_eval (torch.nn.Module): The evaluation criterion.
+    """
+
     def __init__(self, model, dev_loader, criterion_eval, lr=1, L=165, n=5):
         super(NT_AvSGD, self).__init__(model.parameters(), lr=lr, t0=math.inf)
         self.temp = {}
@@ -23,40 +47,48 @@ class NT_AvSGD(optim.ASGD):
         self.k = 0
         self.L = L
         self.n = n
-        self.mu = 1
         self.model = model
         self.criterion_eval = criterion_eval
 
     def step(self, closure=None):
+        """
+        Performs a single optimization step.
+        """
         super(NT_AvSGD, self).step(closure)
         with torch.no_grad():
-          #calculate validation PPL
-          if self.k % self.L == 0 and self.T==0:
-              ppl_dev, _ = eval_loop(self.dev_loader, self.criterion_eval, self.model)
-              self.model.train()
-              if self.t>self.n and ppl_dev > min(self.logs[:self.t-self.n]):
-                self.T = self.k
-                # set t0 of ASGD to 0
-                for group in self.param_groups:
-                    group['t0'] = 0
-                print("averaging started, at iteration", self.k, " after ", self.t, " cycles")
-              self.logs.append(ppl_dev)
-              self.t += 1
-          self.k += 1
+            # Calculate validation perplexity
+            if self.k % self.L == 0 and self.T == 0:
+                ppl_dev, _ = eval_loop(self.dev_loader, self.criterion_eval, self.model)
+                self.model.train()
+                if self.t > self.n and ppl_dev > min(self.logs[:self.t - self.n]):
+                    self.T = self.k
+                    # Set t0 of ASGD to 0
+                    for group in self.param_groups:
+                        group['t0'] = 0
+                    print("Averaging started, at iteration", self.k, "after", self.t, "cycles")
+                self.logs.append(ppl_dev)
+                self.t += 1
+        self.k += 1
 
     def average(self):
+        """
+        Performs parameter averaging.
+        """
         if self.T == 0:
-            #print("No need to average")
+            # No need to average
             return
         with torch.no_grad():
-            # use ax computed in ASGD
+            # Use ax computed in ASGD
             for prm in self.model.parameters():
                 self.temp[prm] = prm.data.clone()
                 prm.data = self.state[prm]['ax'].clone()
 
     def restore(self):
+        """
+        Restores the original parameter values.
+        """
         if self.T == 0:
-            #print("No need to restore")
+            # No need to restore
             return
         with torch.no_grad():
             for prm in self.model.parameters():
@@ -64,6 +96,19 @@ class NT_AvSGD(optim.ASGD):
 
 
 def train_loop(data, optimizer, criterion, model, clip=5):
+    """
+    Trains the model using the provided data, optimizer, criterion, and model.
+
+    Args:
+        data (iterable): The training data.
+        optimizer (torch.optim.Optimizer): The optimizer used for updating the model's weights.
+        criterion (torch.nn.modules.loss._Loss): The loss function used for computing the loss.
+        model (torch.nn.Module): The model to be trained.
+        clip (float, optional): The maximum gradient norm value to clip the gradients. Defaults to 5.
+
+    Returns:
+        float: The average loss per token over the training data.
+    """
     model.train()
     loss_array = []
     number_of_tokens = []
@@ -82,6 +127,17 @@ def train_loop(data, optimizer, criterion, model, clip=5):
     return sum(loss_array)/sum(number_of_tokens)
 
 def eval_loop(data, eval_criterion, model):
+    """
+    Evaluate the model on the given data using the specified evaluation criterion.
+
+    Args:
+        data (iterable): The data to evaluate the model on.
+        eval_criterion (callable): The evaluation criterion to use.
+        model: The model to evaluate.
+
+    Returns:
+        tuple: A tuple containing the perplexity (ppl) and the average loss (loss_to_return).
+    """
     model.eval()
     loss_to_return = []
     loss_array = []
@@ -99,6 +155,12 @@ def eval_loop(data, eval_criterion, model):
     return ppl, loss_to_return
 
 def init_weights(mat):
+    """
+    Initializes the weights of the given module using specific initialization techniques.
+
+    Args:
+        mat (nn.Module): The module for which to initialize the weights.
+    """
     for m in mat.modules():
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
@@ -122,7 +184,25 @@ def train(model, optimizer, exp_name,
           lang, train_loader, dev_loader, test_loader,
           clip=5, epochs=100, patience=3,
           tensorboard_folder='tensorboard', models_folder='models', device='cpu'):
-    
+    """
+    Trains the given model using the specified optimizer and data loaders.
+
+    Args:
+        model (nn.Module): The model to be trained.
+        optimizer (torch.optim.Optimizer): The optimizer used for training.
+        exp_name (str): The name of the experiment used for logging and saving the model.
+        lang (Language): The language object containing ids of our vocabulary.
+        train_loader (DataLoader): The data loader for training data.
+        dev_loader (DataLoader): The data loader for development data.
+        test_loader (DataLoader): The data loader for test data.
+        clip (float, optional): The maximum gradient allowed. Defaults to 5.
+        epochs (int, optional): The number of training epochs. Defaults to 100.
+        patience (int, optional): The number of epochs to wait for improvement in validation loss before early stopping. Defaults to 3.
+        tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
+        models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
+        device (str, optional): The device to be used for training. Defaults to 'cpu'.
+    """
+
     criterion_train = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
     criterion_eval = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"], reduction='sum')
 

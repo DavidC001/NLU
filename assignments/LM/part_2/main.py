@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import os
 
+# Define the batch size
 batch_size = 256
 
 
@@ -18,7 +19,8 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batch_size=batch_size, device=device)
 
-    run_exp = [0,0,0,0,0,0,1,1,1,1]
+    # Define the experiments to run
+    run_exp = [1,1,1,1,1,1,1,1,1,1]
 
     #create models dir 
     if not os.path.exists("models"):

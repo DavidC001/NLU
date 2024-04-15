@@ -1,7 +1,18 @@
 from torch import nn
 
 class LM_RNN(nn.Module):
-    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0, emb_dropout=0, n_layers=1):
+    """
+    Language Model RNN class.
+
+    Args:
+        emb_size (int): The size of the embedding layer.
+        hidden_size (int): The size of the hidden layer.
+        output_size (int): The size of the output layer (vocabulary size).
+        pad_index (int, optional): The index used for padding. Defaults to 0.
+        n_layers (int, optional): The number of layers in the RNN. Defaults to 1.
+    """
+
+    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, n_layers=1):
         super(LM_RNN, self).__init__()
         # Token ids to vectors, we will better see this in the next lab
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)
@@ -18,6 +29,19 @@ class LM_RNN(nn.Module):
         return output
 
 class LM_LSTM(nn.Module):
+    """
+    A language model LSTM class.
+
+    Args:
+        emb_size (int): The size of the embedding layer.
+        hidden_size (int): The size of the hidden layer.
+        output_size (int): The size of the output layer.
+        pad_index (int, optional): The index used for padding. Defaults to 0.
+        out_dropout (float, optional): The dropout rate before the output layer. Defaults to 0.
+        emb_dropout (float, optional): The dropout rate after the embedding layer. Defaults to 0.
+        n_layers (int, optional): The number of layers in the LSTM. Defaults to 1.
+    """
+
     def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0, emb_dropout=0, n_layers=1):
         super(LM_LSTM, self).__init__()
         # Token ids to vectors, we will better see this in the next lab

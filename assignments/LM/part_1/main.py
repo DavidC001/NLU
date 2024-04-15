@@ -8,6 +8,7 @@ from model import LM_RNN, LM_LSTM
 import torch
 import os
 
+# Define the batch size
 batch_size = 256
 
 
@@ -17,6 +18,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batch_size=batch_size, device=device)
 
+    # Define the experiments to run
     run_exp = [1,1,1,1,1,1,1,1,1,1]
     
     #create models dir 

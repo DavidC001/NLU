@@ -2,6 +2,20 @@ from torch import nn
 import torch
 
 class VariationalDropout(nn.Module):
+    """
+    Variational Dropout module.
+
+    This module applies variational dropout to the input tensor during training.
+    Variational dropout randomly sets elements of the input tensor to zero with a probability of `dropout_probability`.
+    The dropout mask is shared across the input sequence and is different for each batch.
+
+    Args:
+        dropout_probability (float): The probability of setting elements to zero. Should be in the range [0, 1].
+
+    Returns:
+        torch.Tensor: The input tensor after applying variational dropout.
+
+    """
     def __init__(self, dropout_probability: float,):
         super().__init__()
         self.p = dropout_probability
@@ -20,6 +34,18 @@ class VariationalDropout(nn.Module):
         return x
 
 class LM_LSTM_WT_VD(nn.Module):
+    """
+    A language model LSTM with weight tying and variational dropout.
+
+    Args:
+        emb_size (int): The size of the embedding layer.
+        hidden_size (int): The size of the hidden layer.
+        output_size (int): The size of the output layer.
+        pad_index (int, optional): The index of the padding token. Defaults to 0.
+        out_dropout (float, optional): The dropout rate before the output layer. Defaults to 0.
+        emb_dropout (float, optional): The dropout rate after the embedding layer. Defaults to 0.
+        n_layers (int, optional): The number of LSTM layers. Defaults to 1.
+    """
     def __init__(self, emb_size, hidden_size, output_size, pad_index=0, 
                  out_dropout=0, emb_dropout=0, n_layers=1):
         super(LM_LSTM_WT_VD, self).__init__()
