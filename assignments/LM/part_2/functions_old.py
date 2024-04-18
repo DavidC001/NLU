@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from functools import partial
 from torch import optim
 
-class NT_AvSGD(optim.SGD):
+class NT_AvSGD(optim.ASGD):
     """
     Implementation of Non-Monotonically Triggered Average Stochastic Gradient Descent (NT_AvSGD).
 
@@ -33,14 +33,12 @@ class NT_AvSGD(optim.SGD):
         k (int): The current iteration.
         L (int): The number of iterations between validation checks.
         n (int): The number of previous validation checks to consider for non-monotonicity.
-        mu (int): The averaging parameter.
         model (torch.nn.Module): The neural network model.
-        ax (dict): A dictionary to store the average of the parameters.
         criterion_eval (torch.nn.Module): The evaluation criterion.
     """
 
     def __init__(self, model, dev_loader, criterion_eval, lr=1, L=165, n=5):
-        super(NT_AvSGD, self).__init__(model.parameters(), lr=lr)
+        super(NT_AvSGD, self).__init__(model.parameters(), lr=lr, t0=math.inf)
         self.temp = {}
         self.logs = []
         self.dev_loader = dev_loader
@@ -49,9 +47,7 @@ class NT_AvSGD(optim.SGD):
         self.k = 0
         self.L = L
         self.n = n
-        self.mu = 1
         self.model = model
-        self.ax = {}
         self.criterion_eval = criterion_eval
 
     def step(self, closure=None):
@@ -66,19 +62,13 @@ class NT_AvSGD(optim.SGD):
                 self.model.train()
                 if self.t > self.n and ppl_dev > min(self.logs[:self.t - self.n]):
                     self.T = self.k
+                    # Set t0 of ASGD to 0
+                    for group in self.param_groups:
+                        group['t0'] = 0
                     print("Averaging started, at iteration", self.k, "after", self.t, "cycles")
                 self.logs.append(ppl_dev)
                 self.t += 1
         self.k += 1
-
-        if self.T > 0:
-            for prm in self.model.parameters():
-                if prm not in self.ax:
-                    self.ax[prm] = prm.data.clone()
-                else:
-                    self.ax[prm] = self.ax[prm] + (prm.data - self.ax[prm]) / self.mu
-            self.mu += 1
-
 
     def average(self):
         """
@@ -91,7 +81,7 @@ class NT_AvSGD(optim.SGD):
             # Use ax computed in ASGD
             for prm in self.model.parameters():
                 self.temp[prm] = prm.data.clone()
-                prm.data = self.ax[prm].clone()
+                prm.data = self.state[prm]['ax'].clone()
 
     def restore(self):
         """
@@ -236,7 +226,8 @@ def train(model, optimizer, exp_name,
             writer.add_scalar('PPL/dev', ppl_dev, epoch)
 
             
-            if 'T' in optimizer.__dict__:
+            # if t0 in optimizer is set to 0, the model is averaged
+            if 't0' in optimizer.param_groups[0]:
                     optimizer.average()
                     ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
                     optimizer.restore()
@@ -258,7 +249,7 @@ def train(model, optimizer, exp_name,
 
     writer.add_scalar('PPL/test', final_ppl, 0)
 
-    if 'T' in optimizer.__dict__:
+    if 't0' in optimizer.param_groups[0]:
         optimizer.average()
         final_ppl,  _ = eval_loop(dev_loader, criterion_eval, best_model)
         optimizer.restore()

@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=1024M
 #SBATCH -N 1
-#SBATCH -t 0-4:00
+#SBATCH -t 0-10:00
 
 module load cuda/12.1
 
