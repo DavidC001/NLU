@@ -8,8 +8,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import copy
 import numpy as np
-from torch.utils.data import DataLoader
-from functools import partial
+import os
+
+from model import LM_RNN, LM_LSTM
+from utils import getDataLoaders
 
 def train_loop(data, optimizer, criterion, model, clip=5):
     """
@@ -99,7 +101,8 @@ def init_weights(mat):
 def train(model, optimizer, exp_name, 
           lang, train_loader, dev_loader, test_loader,
           clip=5, epochs=100, patience=3,
-          tensorboard_folder='tensorboard', models_folder='models', device='cpu'):
+          tensorboard_folder='tensorboard', models_folder='models', device='cpu',
+          model_folder='models'):
     """
     Trains the given model using the specified optimizer and data loaders.
 
@@ -117,6 +120,7 @@ def train(model, optimizer, exp_name,
         tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
         models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
         device (str, optional): The device to be used for training. Defaults to 'cpu'.
+        model_folder (str, optional): The folder path for saving the trained model. Defaults to 'models'.
     """
     
     criterion_train = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
@@ -157,6 +161,94 @@ def train(model, optimizer, exp_name,
     writer.add_scalar('PPL/test', final_ppl, 0)
 
     # Save the best model
-    torch.save(best_model.state_dict(), models_folder+'/'+exp_name+'.pt')
+    torch.save(best_model.state_dict(), os.path.join(model_folder, exp_name+".pt"))
 
     writer.close()
+
+def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1]):
+    """
+    Run the experiments for the different configurations of the models.
+    """
+    # Load the data
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Define the batch size
+    batch_size = 256
+    train_loader, dev_loader, test_loader, lang = getDataLoaders(batch_size=batch_size, device=device)
+    epochs = 200
+    patience = 5
+
+    #create models dir 
+    model_path = "models"
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
+    baseline = LM_RNN(emb_size=300, hidden_size=300, output_size=len(lang.word2id), n_layers=1).to(device)
+    baseline.apply(init_weights)
+    exp_lr = [0.5, 1, 2]
+    exp_name = ["baseline_lowLR", "baseline", "baseline_higherLR"]
+
+    for i,lr in enumerate(exp_lr):
+        if run_exp[i]:
+            print(f"Running experiment {exp_name[i]}")
+            model = copy.deepcopy(baseline).to(device)
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
+
+    LM_baseline = LM_LSTM(emb_size=300, hidden_size=300, output_size=len(lang.word2id), n_layers=1).to(device)
+    LM_baseline.apply(init_weights)
+    exp_lr = [0.5, 1, 2]
+    exp_name = ["LSTM_lowLR", "LSTM", "LSTM_higherLR"]
+
+    for i,lr in enumerate(exp_lr):
+        if run_exp[i+3]:
+            print(f"Running experiment {exp_name[i]}")
+            model = copy.deepcopy(LM_baseline).to(device)
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
+
+    LM_LSTM_dropout = LM_LSTM(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
+    LM_LSTM_dropout.apply(init_weights)
+    exp_lr = [0.5, 1, 2]
+    exp_name = ["LSTM_dropout_lowLR", "LSTM_dropout", "LSTM_dropout_higherLR"]
+
+    for i,lr in enumerate(exp_lr):
+        if run_exp[i+6]:
+            print(f"Running experiment {exp_name[i]}")
+            model = copy.deepcopy(LM_LSTM_dropout).to(device)
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
+
+    # LSTM AdamW
+    if run_exp[9]:
+        model = copy.deepcopy(LM_LSTM_dropout).to(device)
+        optimizer = torch.optim.AdamW(model.parameters())
+        train(model, optimizer, "LSTM_AdamW", lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
+
+def testModel(model, check, test, criterion, model_path):
+    model.load_state_dict(torch.load(os.path.join(model_path, check)))
+    ppl, _ = eval_loop(test, criterion, model)
+    print(f"{check}: {ppl}")
+
+def testModels():
+    """
+    Test the different configurations of the models on the test set.
+    """
+    # load the data
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Define the batch size
+    batch_size = 256
+    _, _, test_loader, lang = getDataLoaders(batch_size=batch_size, device=device)
+    criterion_eval = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"], reduction='sum')
+
+    #RNNs
+    baseline = LM_RNN(emb_size=300, hidden_size=300, output_size=len(lang.word2id), n_layers=1).to(device)
+    RNNs = ["baseline_lowLR.pt", "baseline.pt", "baseline_higherLR.pt"]
+    model_path = "models"
+    for check in RNNs:
+        testModel(baseline, check, test_loader, criterion_eval, model_path)
+
+    LM_baseline = LM_LSTM(emb_size=300, hidden_size=300, output_size=len(lang.word2id), n_layers=1).to(device)
+    LSTMs = ["LSTM_lowLR.pt", "LSTM.pt", "LSTM_higherLR.pt", "LSTM_dropout_lowLR.pt", "LSTM_dropout.pt", "LSTM_dropout_higherLR.pt", "LSTM_AdamW.pt"]
+    for check in LSTMs:
+        testModel(LM_baseline, check, test_loader, criterion_eval, model_path)
+
