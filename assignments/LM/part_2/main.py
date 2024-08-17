@@ -3,13 +3,18 @@
 
 # Import everything from functions.py file
 from functions import runExps, testModels
-
-# Define the batch size
-batch_size = 256
+import argparse
 
 
 if __name__ == "__main__":
-    run_exps = False
-    if run_exps: runExps()
-    
-    testModels()
+
+    # define command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--Train', type=bool, default=False)
+    parser.add_argument('--Test', type=bool, default=True)
+    args = parser.parse_args()
+
+    if args.Train:
+        runExps()
+    if args.Test:
+        testModels()
