@@ -169,7 +169,7 @@ def eval_loop(data, model, lang):
 
 def runTest(test_name, device,
             out_slot, out_int, vocab_len, pad_index, 
-            hid_size, emb_size, n_layer, dropoutEmb, dropoutOut, bidirectional, combine,
+            hid_size, emb_size, n_layer, dropoutEmb, dropoutOut, bidirectional, combine, layerNorm,
             runs, n_epochs, lr, clip, patience, 
             lang, train_loader, dev_loader, test_loader):
     print("Running test", test_name)
@@ -180,7 +180,7 @@ def runTest(test_name, device,
 
     for x in tqdm(range(0, runs)):
         model = ModelIAS(hid_size=hid_size, out_slot=out_slot, out_int=out_int, 
-                         emb_size=emb_size, vocab_len=vocab_len, n_layer=n_layer, 
+                         emb_size=emb_size, vocab_len=vocab_len, n_layer=n_layer, layerNorm=layerNorm,
                          pad_index=pad_index, dropoutEmb=dropoutEmb, dropoutOut=dropoutOut, 
                          bidirectional=bidirectional, combine=combine).to(device)
         model.apply(init_weights)
@@ -219,7 +219,7 @@ def runTest(test_name, device,
         intent_acc.append(intent_test['accuracy'])
         slot_f1s.append(results_test['total']['f'])
 
-        print(f"Intent Acc: {intent_test['accuracy']:.3f} Slot F1: {results_test['total']['f']:.3f}")
+        # print(f"Intent Acc: {intent_test['accuracy']:.3f} Slot F1: {results_test['total']['f']:.3f}")
 
         if results_test['total']['f'] > best_f1_runs:
             best_f1_runs = results_test['total']['f']
@@ -250,6 +250,8 @@ def runTest(test_name, device,
                         "dropoutEmb": dropoutEmb,
                         "dropoutOut": dropoutOut,
                         "bidirectional": bidirectional,
+                        "combine": combine,
+                        "layerNorm": layerNorm,
                   },
                   "lang": lang,
                   }

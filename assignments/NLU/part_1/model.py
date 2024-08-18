@@ -4,7 +4,7 @@ import torch
 
 class ModelIAS(nn.Module):
 
-    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0, dropoutEmb=0, dropoutOut=0, bidirectional=False, combine='concat'):
+    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0, dropoutEmb=0, dropoutOut=0, bidirectional=False, combine='concat', layerNorm=False):
         super(ModelIAS, self).__init__()
         # hid_size = Hidden size
         # out_slot = number of slots (output size for slot filling)
@@ -16,8 +16,9 @@ class ModelIAS(nn.Module):
         self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=bidirectional, batch_first=True)
         self.dropOut = nn.Dropout(dropoutOut)
 
-        self.slot_out = nn.Linear(hid_size * (2 if bidirectional and combine=="concat" else 1), out_slot)
-        self.intent_out = nn.Linear(hid_size * (2 if bidirectional and combine=="concat" else 1), out_int)
+        self.state_size = hid_size * (2 if bidirectional and combine=="concat" else 1)
+        self.slot_out = nn.Linear(self.state_size, out_slot)
+        self.intent_out = nn.Linear(self.state_size, out_int)
 
         self.bidirectional = bidirectional
         self.combination_method = combine
@@ -25,9 +26,15 @@ class ModelIAS(nn.Module):
         if combine == "gated":
             linear = nn.Linear(hid_size * 2, hid_size)
             activation = nn.Sigmoid() 
-            self.gate = nn.Sequential(linear, activation)
+            self.gate_intent = nn.Sequential(linear, activation)
+            linear_slot = nn.Linear(hid_size * 2, hid_size)
+            self.gate_slot = nn.Sequential(linear_slot, activation)
 
-        # breakpoint()
+        self.layerNorm = layerNorm
+        if layerNorm:
+            self.ln = nn.LayerNorm(self.state_size)
+            self.ln2 = nn.LayerNorm(self.state_size)
+
         
     def forward(self, utterance, seq_lengths):
         # utterance.size() = batch_size X seq_len
@@ -51,12 +58,24 @@ class ModelIAS(nn.Module):
                 last_hidden = torch.cat((last_hidden[0], last_hidden[1]), dim=1)
             elif self.combination_method == "sum":
                 last_hidden = last_hidden[0] + last_hidden[1]
+                utt_shape = utt_encoded.shape
+                utt_encoded = utt_encoded.view([utt_shape[0], utt_shape[1], self.state_size, 2])
+                utt_encoded = utt_encoded.sum(dim=3)
             elif self.combination_method == "gated":
-                scores = self.gate(torch.cat((last_hidden[0], last_hidden[1]), dim=1))
+                scores = self.gate_intent(torch.cat((last_hidden[0], last_hidden[1]), dim=1))
                 last_hidden = scores * last_hidden[0] + (1-scores) * last_hidden[1]
+                scores = self.gate_slot(utt_encoded)
+                utt_shape = utt_encoded.shape
+                utt_encoded = utt_encoded.view([utt_shape[0], utt_shape[1], self.state_size, 2])
+                utt_encoded = scores * utt_encoded[:, :, :, 0] + (1-scores) * utt_encoded[:, :, :, 1]
+                # breakpoint()
             else:
                 raise ValueError("Invalid combination method")
-                
+        
+        if self.layerNorm:
+            last_hidden = self.ln(last_hidden)
+            utt_encoded = self.ln2(utt_encoded)
+
         # Compute slot logits
         slots = self.slot_out(utt_encoded)
         # Compute intent logits

@@ -9,6 +9,10 @@ from model import ModelIAS
 import numpy as np
 import argparse
 
+#silence warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 torch.manual_seed(0)
 np.random.seed(0)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -33,20 +37,21 @@ def train():
         'dev_loader': dev_loader,
         'test_loader': test_loader,
 
-        'hid_size': 200,
-        'emb_size': 300,
+        'hid_size': 256,
+        'emb_size': 512,
         'n_layer': 1,
         
         'lr': 0.0005,
         'n_epochs': 200,
-        'runs': 5,
+        'runs': 10,
         'clip': 5,
-        'patience': 3,
+        'patience': 10,
         
         'dropoutEmb': 0,
         'dropoutOut': 0,
         'bidirectional': False,
         'combine': 'concat',
+        'layerNorm': False,
         
         'test_name': 'base',
     }
@@ -62,6 +67,7 @@ def train():
         {   
             'test_name': "bidirectional_sum",
             'bidirectional': True,
+            'combine': 'sum'
         },
         {
             'test_name': "bidirectional_gated",
@@ -69,11 +75,33 @@ def train():
             'combine': 'gated'
         },
         {
-            'test_name': "dropout",
+            'test_name': "dropout_concat",
             'dropoutEmb': 0.5,
             'dropoutOut': 0.5,
-            'patience': 6,
-            'bidirectional': True
+            'bidirectional': True,
+            'combine': 'concat'
+        },
+        {
+            'test_name': "dropout_sum",
+            'dropoutEmb': 0.5,
+            'dropoutOut': 0.5,
+            'bidirectional': True,
+            'combine': 'sum'
+        },
+        {
+            'test_name': "dropout_gated",
+            'dropoutEmb': 0.5,
+            'dropoutOut': 0.5,
+            'bidirectional': True,
+            'combine': 'gated'
+        },
+        {
+            'test_name': "dropout_gated_LN",
+            'dropoutEmb': 0.5,
+            'dropoutOut': 0.5,
+            'bidirectional': True,
+            'combine': 'gated',
+            'layerNorm': True
         },
     ]
 
@@ -94,15 +122,12 @@ def test():
         
         _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang)
         
-        criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
-        criterion_intents = nn.CrossEntropyLoss()
-        
         results_test, intent_test, _ = eval_loop(test_loader, model, lang)
         print(file)
         print('Intent Acc', intent_test['accuracy'])
         print('Slot F1', results_test['total']['f'])
 
-        breakpoint()
+        # breakpoint()
 
 if __name__ == "__main__":
 
