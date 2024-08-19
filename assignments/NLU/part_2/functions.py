@@ -161,7 +161,6 @@ def runTest(test_name, device,
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model)
     out_slot = len(lang.slot2id)
     out_int = len(lang.intent2id)
-    pad_index = lang.pad_token
 
     slot_f1s, intent_acc = [], []
     best_f1_runs = 0
@@ -169,7 +168,7 @@ def runTest(test_name, device,
 
     for x in tqdm(range(0, runs)):
         model = ModelIAS(out_slot, out_int, 
-                         bert_model, pad_index, dropoutBertEmb, 
+                         bert_model, dropoutBertEmb, 
                          classification_layers_slots, classification_layers_intents
                          ).to(device)
 
@@ -232,11 +231,16 @@ def runTest(test_name, device,
                         "out_slot": out_slot,
                         "out_int": out_int,
                         "bert_model": bert_model,
-                        "pad_index": pad_index,
                         "dropoutBertEmb": dropoutBertEmb,
                         "classification_layers_slots": classification_layers_slots,
                         "classification_layers_intents": classification_layers_intents
                   },
                   "lang": lang,
+                  "results": {
+                              "slot_f1": slot_f1s.mean(), 
+                              "slot_f1_std": slot_f1s.std(),
+                              "intent_acc": intent_acc.mean(),
+                              "intent_acc_std": intent_acc.std()
+                              }
                   }
     torch.save(saving_object, PATH)

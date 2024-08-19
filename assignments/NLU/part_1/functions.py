@@ -254,5 +254,11 @@ def runTest(test_name, device,
                         "layerNorm": layerNorm,
                   },
                   "lang": lang,
+                  "results": {
+                                "slot_f1": slot_f1s.mean(), 
+                                "slot_f1_std": slot_f1s.std(),
+                                "intent_acc": intent_acc.mean(),
+                                "intent_acc_std": intent_acc.std()
+                    }
                   }
     torch.save(saving_object, PATH)
