@@ -43,9 +43,9 @@ def train():
         
         'lr': 0.0005,
         'n_epochs': 200,
-        'runs': 10,
+        'runs': 1,
         'clip': 5,
-        'patience': 10,
+        'patience': 5,
         
         'dropoutEmb': 0,
         'dropoutOut': 0,
@@ -77,31 +77,31 @@ def train():
         {
             'test_name': "dropout_concat",
             'dropoutEmb': 0.5,
-            'dropoutOut': 0.5,
+            'dropoutOut': 0.25,
             'bidirectional': True,
-            'combine': 'concat'
+            'combine': 'concat',
         },
         {
             'test_name': "dropout_sum",
             'dropoutEmb': 0.5,
-            'dropoutOut': 0.5,
+            'dropoutOut': 0.25,
             'bidirectional': True,
-            'combine': 'sum'
+            'combine': 'sum',
         },
         {
             'test_name': "dropout_gated",
             'dropoutEmb': 0.5,
-            'dropoutOut': 0.5,
+            'dropoutOut': 0.25,
             'bidirectional': True,
-            'combine': 'gated'
+            'combine': 'gated',
         },
         {
             'test_name': "dropout_gated_LN",
             'dropoutEmb': 0.5,
-            'dropoutOut': 0.5,
+            'dropoutOut': 0.25,
             'bidirectional': True,
             'combine': 'gated',
-            'layerNorm': True
+            'layerNorm': True,
         },
     ]
 
