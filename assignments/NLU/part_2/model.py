@@ -6,7 +6,7 @@ from transformers import AutoModel
 class ModelIAS(nn.Module):
 
     def __init__(self, out_slot, out_int, 
-                 bert_model, pad_index, dropoutBertEmb=0,
+                 bert_model, dropoutBertEmb=0,
                  classification_layers_slots=[], classification_layers_intents=[]):
         super(ModelIAS, self).__init__()
         # hid_size = Hidden size

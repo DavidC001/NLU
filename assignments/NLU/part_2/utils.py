@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 
 class Lang():
-    def __init__(self, intents, slots, bert_model, cutoff=0):
+    def __init__(self, intents, slots, bert_model):
         # self.word2id = self.w2id(words, cutoff=cutoff, unk=True)
         self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.pad_token = self.tokenizer.pad_token_id
@@ -54,25 +54,30 @@ class IntentsAndSlots (data.Dataset):
 
         # check for a space before the word, if none is found either it is the first word or it should be removed
         delta = 0
+        prev_word = None
         for i, w in enumerate(word_ids):
             if w is None or w == 0:
                 continue
             char_span = tokenized.word_to_chars(w)
-            if self.utterances[idx][char_span[0]-1] != ' ': # check if there is a space before the word
+            if self.utterances[idx][char_span[0]-1] != ' ' and prev_word != w:
+                # check if there is a space before the word
                 delta += 1
-            word_ids[i] -= delta
+            prev_word = w
+            word_ids[i] = w - delta
         sentence_words = self.utterances[idx].split()
 
         # take only the first word piece of each word, keep the index of the first word piece
         words = set(word_ids)
         words.remove(None)
-        word_ids = torch.Tensor([word_ids.index(i) for i in set(words)])
+        mapping = torch.Tensor([word_ids.index(i) for i in set(words)])
+
+        assert len(mapping) == len(sentence_words)
 
         slots = torch.Tensor(self.slot_ids[idx])
         intent = self.intent_ids[idx]
         sample = {'utterance': utt, 
                   'attention': att,
-                  'mapping': word_ids,
+                  'mapping': mapping,
                   'sentence': sentence_words,
                   'slots': slots, 
                   'intent': intent}
@@ -186,15 +191,13 @@ def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased'):
     train_raw = X_train
     dev_raw = X_dev
 
-    words = sum([x['utterance'].split() for x in train_raw], []) # No set() since we want to compute 
-                                                            # the cutoff
     corpus = train_raw + dev_raw + test_raw # We do not want unk labels, 
                                             # however this depends on the research purpose
     slots = set(sum([line['slots'].split() for line in corpus],[]))
     intents = set([line['intent'] for line in corpus])
 
     if lang is None:
-        lang = Lang(intents, slots, cutoff=0, bert_model=bert_model)
+        lang = Lang(intents, slots, bert_model=bert_model)
 
     train_dataset = IntentsAndSlots(train_raw, lang)
     dev_dataset = IntentsAndSlots(dev_raw, lang)
