@@ -201,11 +201,11 @@ def runTest(test_name, device,
         best_f1 = 0
         best_model = None
         pat = patience
-        for x in tqdm(range(1,n_epochs)):
+        for e in tqdm(range(1,n_epochs)):
             loss = train_loop(train_loader, optimizer, model, clip=clip, lang=lang)
             
-            if x % 5 == 0:
-                sampled_epochs.append(x)
+            if e % 5 == 0:
+                sampled_epochs.append(e)
                 losses_train.append(np.asarray(loss).mean())
 
                 results_dev, loss_dev = eval_loop(dev_loader, model, lang)
@@ -215,6 +215,7 @@ def runTest(test_name, device,
                     # print(f"\nNew best F1: {f1}")
                     best_f1 = results_dev['macro f1']
                     best_model = deepcopy(model).to('cpu')
+                    pat = patience
                 else:
                     pat -= 1
                 if pat <= 0: # Early stopping with patient
@@ -251,7 +252,7 @@ def runTest(test_name, device,
     print('Recall', round(recall.mean(),3), '+-', round(recall.std(),3))
 
     PATH = os.path.join("models", test_name+".pt")
-    saving_object = {"epoch": x, 
+    saving_object = {
                   "model": best_model_runs.state_dict(), 
                   "model_params": {
                         "out_sents": out_sents,

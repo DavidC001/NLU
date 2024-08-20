@@ -45,7 +45,7 @@ def train():
         'n_epochs': 200,
         'runs': 5,
         'clip': 5,
-        'patience': 5,
+        'patience': 3,
         
         'dropoutEmb': 0,
         'dropoutOut': 0,
