@@ -39,6 +39,7 @@ class ModelIAS(nn.Module):
     def forward(self, utterance, seq_lengths):
         # utterance.size() = batch_size X seq_len
         utt_emb = self.embedding(utterance) # utt_emb.size() = batch_size X seq_len X emb_size
+        utt_emb = self.dropEmb(utt_emb)
         
         # pack_padded_sequence avoid computation over pad tokens reducing the computational cost
         
@@ -71,6 +72,9 @@ class ModelIAS(nn.Module):
                 # breakpoint()
             else:
                 raise ValueError("Invalid combination method")
+        
+        last_hidden = self.dropOut(last_hidden)
+        utt_encoded = self.dropOut(utt_encoded)
         
         if self.layerNorm:
             last_hidden = self.ln(last_hidden)
