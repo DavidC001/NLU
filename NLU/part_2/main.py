@@ -29,7 +29,7 @@ def train():
         
         'lr': 0.0001,
         'n_epochs': 200,
-        'runs': 1,
+        'runs': 5,
         'clip': 5,
         'patience': 10,
         'batchsize': batchsize,

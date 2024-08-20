@@ -43,7 +43,7 @@ def train():
         
         'lr': 0.0005,
         'n_epochs': 200,
-        'runs': 1,
+        'runs': 5,
         'clip': 5,
         'patience': 5,
         
