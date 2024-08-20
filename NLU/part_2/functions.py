@@ -192,7 +192,7 @@ def runTest(test_name, device,
                 if f1 > best_f1:
                     # print(f"\nNew best F1: {f1}")
                     best_f1 = f1
-                    best_model = deepcopy(model)
+                    best_model = deepcopy(model).to("cpu")
                 else:
                     pat -= 1
                 if pat <= 0: # Early stopping with patient
