@@ -113,19 +113,25 @@ def train():
 
 def test():
     for file in os.listdir('models'):
-        #load object        }
+        print(file)
+        #load object
         saved_object = torch.load(os.path.join('models', file))
         lang = saved_object['lang']
         model_params = saved_object['model_params']
         model = ModelIAS(**model_params).to(device)
         model.load_state_dict(saved_object['model'])
+
+        # load from saved object the Intent Acc and Slot F1 and stds
+        print(f"\tResults:")
+        print(f"\t\tIntent Acc: {saved_object['results']['intent_acc']} +/- {saved_object['results']['intent_acc_std']}")
+        print(f"\t\tSlot F1: {saved_object['results']['slot_f1']} +/- {saved_object['results']['slot_f1_std']}")
         
         _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang)
         
         results_test, intent_test, _ = eval_loop(test_loader, model, lang)
-        print(file)
-        print('Intent Acc', intent_test['accuracy'])
-        print('Slot F1', results_test['total']['f'])
+        print('\tResults on test set for best saved model:')
+        print('\t\tIntent Acc', intent_test['accuracy'])
+        print('\t\tSlot F1', results_test['total']['f'])
 
         # breakpoint()
 

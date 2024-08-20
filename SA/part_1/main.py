@@ -64,19 +64,30 @@ def train():
 
 def test():
     for file in os.listdir('models'):
+        print(file)
         #load object        }
         saved_object = torch.load(os.path.join('models', file))
         lang = saved_object['lang']
         model_params = saved_object['model_params']
         model = ModelSA(**model_params).to(device)
         model.load_state_dict(saved_object['model'])
+
+        # print saved scores and stds
+        print("\tResults:")
+        print(f"\t\tMacro F1: {saved_object['results']['macro_f1']} +/- {saved_object['results']['macro_f1_std']}")
+        print(f"\t\tMicro F1: {saved_object['results']['micro_f1']} +/- {saved_object['results']['micro_f1_std']}")
+        print(f"\t\tPrecision: {saved_object['results']['precision']} +/- {saved_object['results']['precision_std']}")
+        print(f"\t\tRecall: {saved_object['results']['recall']} +/- {saved_object['results']['recall_std']}")
         
-        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang)
-        
-        results_test, intent_test, _ = eval_loop(test_loader, model, lang)
-        print(file)
-        print('Intent Acc', intent_test['accuracy'])
-        print('Slot F1', results_test['total']['f'])
+        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang, bert_model=model_params['bert_model'])
+
+        # evaluate the model
+        results_test, _ = eval_loop(test_loader, model, lang)
+        print('\tResults on test set for best saved model:')
+        print('\t\tMacro F1', results_test['macro f1'])
+        print('\t\tMicro F1', results_test['micro f1'])
+        print('\t\tPrecision', results_test['micro p'])
+        print('\t\tRecall', results_test['micro r'])
 
         # breakpoint()
 
