@@ -22,7 +22,7 @@ class Lang():
                 vocab[elem] = len(vocab)
         return vocab
 
-class IntentsAndSlots (data.Dataset):
+class SADataset (data.Dataset):
     # Mandatory methods are __init__, __len__ and __getitem__
     def __init__(self, dataset, lang, unk='unk'):
         self.utterances = []
@@ -205,9 +205,9 @@ def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased'):
     if lang is None:
         lang = Lang(sentiments, bert_model=bert_model)
 
-    train_dataset = IntentsAndSlots(train_raw, lang)
-    dev_dataset = IntentsAndSlots(dev_raw, lang)
-    test_dataset = IntentsAndSlots(test_raw, lang)
+    train_dataset = SADataset(train_raw, lang)
+    dev_dataset = SADataset(dev_raw, lang)
+    test_dataset = SADataset(test_raw, lang)
 
     #send pad_token to the collate_fn
     train_loader = DataLoader(train_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, pad_token=lang.pad_token), shuffle=True)
