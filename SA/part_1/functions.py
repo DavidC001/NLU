@@ -226,18 +226,15 @@ def runTest(test_name, device,
             print("No best model found?")
             # breakpoint()
             best_model = model
-        results_test, intent_test, _ = eval_loop(test_loader, best_model, lang)
+        results_test, _ = eval_loop(test_loader, best_model, lang)
         
         macro_f1.append(results_test['macro f1'])
         micro_f1.append(results_test['micro f1'])
         precision.append(results_test['micro p'])
         recall.append(results_test['micro r'])
 
-
-        # print(f"Intent Acc: {intent_test['accuracy']:.3f} Slot F1: {results_test['total']['f']:.3f}")
-
-        if results_test['total']['f'] > best_f1_runs:
-            best_f1_runs = results_test['total']['f']
+        if results_test['macro f1'] > best_f1_runs:
+            best_f1_runs = results_test['macro f1']
             best_model_runs = deepcopy(best_model)
             #show plot
             # plt.plot(sampled_epochs, losses_train, label='Train')
