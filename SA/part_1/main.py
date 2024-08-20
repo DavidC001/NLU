@@ -27,11 +27,11 @@ def train():
         'classification_layers': [],
         'dropoutBertEmb': 0,
         
-        'lr': 0.0005,
+        'lr': 0.0001,
         'n_epochs': 200,
         'runs': 5,
         'clip': 5,
-        'patience': 6,
+        'patience': 10,
         'batchsize': batchsize,
         
         'test_name': 'base',
