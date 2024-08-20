@@ -186,7 +186,7 @@ def runTest(test_name, device,
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model)
     out_sents = len(lang.sent2id)
 
-    macro_f1, micro_f1, precision, recall = 0, 0, 0, 0
+    macro_f1, micro_f1, precision, recall = [], [], [], []
     best_f1_runs = 0
     best_model_runs = None
 
@@ -211,11 +211,9 @@ def runTest(test_name, device,
                 results_dev, loss_dev = eval_loop(dev_loader, model, lang)
                 losses_dev.append(np.asarray(loss_dev).mean())
 
-                macro_f1 = results_dev['macro f1']
-
-                if macro_f1 > best_f1:
+                if results_dev['macro f1'] > best_f1:
                     # print(f"\nNew best F1: {f1}")
-                    best_f1 = macro_f1
+                    best_f1 = results_dev['macro f1']
                     best_model = deepcopy(model)
                 else:
                     pat -= 1
