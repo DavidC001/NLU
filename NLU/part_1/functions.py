@@ -227,6 +227,8 @@ def runTest(test_name, device,
             best_f1_runs = results_test['total']['f']
             best_model_runs = deepcopy(best_model)
             #show plot
+            # print(f"Best model so far: f1 {best_f1_runs:.3f}")
+            # from matplotlib import pyplot as plt
             # plt.plot(sampled_epochs, losses_train, label='Train')
             # plt.plot(sampled_epochs, losses_dev, label='Dev')
             # plt.legend()
