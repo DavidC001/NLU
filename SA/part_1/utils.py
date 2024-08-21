@@ -19,7 +19,7 @@ class Lang():
         if pad:
             vocab['pad'] = self.pad_token
         for elem in elements:
-                vocab[elem] = len(vocab)
+                vocab[elem] = len(vocab)+self.pad_token
         return vocab
 
 class SADataset (data.Dataset):
