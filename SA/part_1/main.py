@@ -47,12 +47,9 @@ def train():
             'test_name': "BERT_base_cased",
         },
         {
-            'bert_model': 'bert-large-uncased',
-            'test_name': "BERT_large_uncased",
-        },
-        {
-            'bert_model': 'bert-large-cased',
-            'test_name': "BERT_large_cased",
+            #roberta
+            'bert_model': 'roberta-base',
+            'test_name': "RoBERTa_base",
         }
     ]
 
