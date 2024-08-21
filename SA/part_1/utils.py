@@ -158,6 +158,10 @@ def load_data(path):
                 line = line.split("####")
                 sample['utterance'] = line[0]
                 sample['sentiment'] = [s.split("=")[-1] for s in line[1].split()]
+
+                # for this assignment we are interested only in the extraction of aspect terms, so we are only interested in T and O tags
+                sample['sentiment'] = [s[0] for s in sample['sentiment']]
+
                 sample['words'] = [s.split("=")[0] if s[0]!="=" else s[1:] for s in line[1].split()]
                 dataset.append(sample)
         return dataset
