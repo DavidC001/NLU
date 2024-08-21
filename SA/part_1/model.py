@@ -4,15 +4,23 @@ import torch
 from transformers import AutoModel
 
 class ModelSA(nn.Module):
+    '''
+        This class is used to define the model for the Sentiment Analysis task
+    '''
 
     def __init__(self, out_sents, 
                  bert_model, dropoutBertEmb=0,
                  classification_layers=[]):
+        '''
+            Initialize the model
+
+            Args:
+                out_sents: Number of sentiment classes
+                bert_model: BERT model to use
+                dropoutBertEmb: Dropout for the representations computed by BERT, default is 0
+                classification_layers: List with the number of neurons for each layer in the sentiment classification, default is []
+        '''
         super(ModelSA, self).__init__()
-        # hid_size = Hidden size
-        # out_slot = number of slots (output size for slot filling)
-        # out_int = number of intents (output size for intent class)
-        # emb_size = word embedding size
         
         self.encoder = AutoModel.from_pretrained(bert_model)
         self.dropoutBertEmb = nn.Dropout(dropoutBertEmb)
@@ -26,10 +34,19 @@ class ModelSA(nn.Module):
             if i != len(classification_layers) - 2:
                 layers.append(nn.ReLU())
         self.sent_out = nn.Sequential(*layers)
-
-        # breakpoint()
         
     def forward(self, utterance, attention_mask, mapping):
+        '''
+            Forward pass of the model
+
+            Args:
+                utterance: Tensor with the utterance
+                attention_mask: Tensor with the attention mask
+                mapping: Tensor with the mapping from the utterance to the slots
+
+            Returns:
+                The sentiment logits
+        '''
         # utterance.size() = batch_size X seq_len
         utt_emb = self.encoder(utterance, attention_mask=attention_mask).last_hidden_state
         # breakpoint()

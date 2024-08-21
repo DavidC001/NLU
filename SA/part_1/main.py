@@ -19,7 +19,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batchsize = 128 # large is bad, but small requires smaller learning rate
 
 def train():
+    '''
+        This function is used to run the tests for the Sentiment Analysis task
+    '''
 
+    # default test parameters
     tests_base = {
         'device': device,
 
@@ -54,20 +58,17 @@ def train():
         {
             'bert_model': 'bert-base-uncased',
             'test_name': "BERT_base_uncased-drop",
-            'runs': 1,
             'dropoutBertEmb': 0.5,
         },
         {
             'bert_model': 'bert-base-cased',
             'test_name': "BERT_base_cased-drop",
-            'runs': 1,
             'dropoutBertEmb': 0.5,
         },
         {
             #roberta
             'bert_model': 'roberta-base',
             'test_name': "RoBERTa_base-drop",
-            'runs': 1,
             'dropoutBertEmb': 0.5,
         },
     ]
@@ -79,6 +80,9 @@ def train():
         runTest(**test)
 
 def test():
+    '''
+        This function is used to evaluate the saved models
+    '''
     for file in os.listdir('models'):
         print(file)
         #load object        }

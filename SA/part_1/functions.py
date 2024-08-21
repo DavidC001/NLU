@@ -11,6 +11,17 @@ from collections import Counter
 from utils import getDataLoaders, Lang
 
 def loss_function(sentiments, sample, lang: Lang):
+    '''
+        This function is used to compute the loss for the Sentiment Analysis task
+
+        Args:
+            sentiments: Tensor with the sentiment logits
+            sample: Dictionary with the sample data
+            lang: Lang object
+
+        Returns:
+            loss: The loss for the Sentiment Analysis task
+    '''
     # breakpoint()
     sent_count = Counter(sample['y_sents'].flatten().tolist())
     sent_weights = torch.tensor([1/(sent_count[x]+1) for x in lang.id2sent.keys()]).float().to(sentiments.device)
@@ -22,16 +33,30 @@ def loss_function(sentiments, sample, lang: Lang):
     return loss
         
 def train_loop(data, optimizer, model, lang, clip=5):
+    '''
+        This function is used to train the model for the Sentiment Analysis task
+
+        Args:
+            data: DataLoader with the data
+            optimizer: Optimizer for the model
+            model: Model for the Sentiment Analysis task
+            lang: Lang object
+            clip: Gradient clipping, default is 5
+
+        Returns:
+            loss_array: Array with the loss for each batch
+    '''
     model.train()
     loss_array = []
     for sample in data:
         optimizer.zero_grad() # Zeroing the gradient
+
         sentiments = model(sample['utterances'], sample['attention'], sample['mapping'])
 
         # breakpoint()
         loss = loss_function(sentiments, sample, lang)
-        
         loss_array.append(loss.item())
+
         loss.backward() # Compute the gradient, deleting the computational graph
         # clip the gradient to avoid exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
@@ -40,10 +65,15 @@ def train_loop(data, optimizer, model, lang, clip=5):
 
 def match_ts(gold_ts_sequence, pred_ts_sequence, lang):
     """
-    calculate the number of correctly predicted targeted sentiment
-    :param gold_ts_sequence: gold standard targeted sentiment sequence
-    :param pred_ts_sequence: predicted targeted sentiment sequence
-    :return:
+        match the gold standard ts tags with the predicted ts tags
+
+        Args:
+            gold_ts_sequence: gold standard ts tags
+            pred_ts_sequence: predicted ts tags
+            lang: Lang object
+
+        Returns:
+            tuple with the number of number of true postive, the total number of elements in the gold standard and the total number of elements in the predicted ts tags
     """
     # positive, negative and neutral
     n_classes = len(lang.sent2id)-1
@@ -67,10 +97,19 @@ def match_ts(gold_ts_sequence, pred_ts_sequence, lang):
 SMALL_POSITIVE_CONST = 1e-4
 def evaluate_ts(gold_ts, pred_ts, lang):
     """
-    evaluate the model performance for the ts task
-    :param gold_ts: gold standard ts tags
-    :param pred_ts: predicted ts tags
-    :return:
+        evaluate the model performance for the ts task
+
+        Args:
+            gold_ts: gold standard ts tags
+            pred_ts: predicted ts tags
+            lang: Lang object
+
+        Returns:
+            dictionary with keys
+                - macro f1
+                - micro precision
+                - micro recall
+                - micro f1
     """
     assert len(gold_ts) == len(pred_ts)
 
@@ -121,9 +160,19 @@ def evaluate_ts(gold_ts, pred_ts, lang):
     return ts_scores
 
 def sentiment_inference(sentiments, sample, lang: Lang):
-    # Slot inference 
-    ref_slots = []
-    hyp_slots = []
+    '''
+        This function is used to perform the sentiment inference
+
+        Args:
+            sentiments: Tensor with the sentiment logits
+            sample: Dictionary with the sample data
+            lang: Lang object
+
+        Returns:
+            Tuple with the reference sentiments and the hypothesis sentiments for the sample
+    '''
+    ref_sentiments = []
+    hyp_sentiments = []
     output_slots = torch.argmax(sentiments, dim=1)
     for id_seq, seq in enumerate(output_slots):
         length = sample['sent_len'][id_seq].tolist()
@@ -132,7 +181,7 @@ def sentiment_inference(sentiments, sample, lang: Lang):
         gt_ids = sample['y_sents'][id_seq].tolist()
         gt_sents = [lang.id2sent[elem] for elem in gt_ids[:length]]
 
-        ref_slots.append(gt_sents)    
+        ref_sentiments.append(gt_sents)    
     
         to_decode = seq[:length].tolist()
 
@@ -140,12 +189,24 @@ def sentiment_inference(sentiments, sample, lang: Lang):
         tmp_seq = []
         for id_el, elem in enumerate(to_decode):
             tmp_seq.append(lang.id2sent[elem])
-        hyp_slots.append(tmp_seq)
+        hyp_sentiments.append(tmp_seq)
     
     # breakpoint()
-    return ref_slots, hyp_slots
+    return ref_sentiments, hyp_sentiments
 
 def eval_loop(data, model, lang):
+    '''
+        This function is used to evaluate the model for the Sentiment Analysis task
+
+        Args:
+            data: DataLoader with the data
+            model: Model for the Sentiment Analysis task
+            lang: Lang object
+
+        Returns:
+            results: Dictionary with the evaluation results
+            loss_array: Array with the loss for each batch
+    '''
     model.eval()
     loss_array = []
     
@@ -181,6 +242,22 @@ def eval_loop(data, model, lang):
 def runTest(test_name, device,
             bert_model, dropoutBertEmb, classification_layers,
             runs, n_epochs, lr, clip, patience, batchsize):
+    '''
+        This function is used to run the tests for the Sentiment Analysis task
+
+        Args:
+            test_name: Name of the test
+            device: Device to use
+            bert_model: BERT model to use
+            dropoutBertEmb: Dropout for the representations computed by BERT
+            classification_layers: List with the number of neurons for each layer in the sentiment classification head
+            runs: Number of runs
+            n_epochs: Number of epochs
+            lr: Learning rate
+            clip: Gradient clipping
+            patience: Patience for early stopping
+            batchsize: Batch size
+    '''
     print("Running test", test_name)
 
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model, device=device)
@@ -253,6 +330,7 @@ def runTest(test_name, device,
     print('Precision', round(precision.mean(),3), '+-', round(precision.std(),3))
     print('Recall', round(recall.mean(),3), '+-', round(recall.std(),3))
 
+    # Save the model
     PATH = os.path.join("models", test_name+".pt")
     saving_object = {
                   "model": best_model_runs.state_dict(), 

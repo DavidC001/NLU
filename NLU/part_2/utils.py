@@ -7,7 +7,18 @@ from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 
 class Lang():
+    '''
+        Class to map words, intents and slots to integers
+    '''
     def __init__(self, intents, slots, bert_model):
+        '''
+            Initialize the Lang class with the words, intents and slots
+
+            Args:
+                intents : list of intents
+                slots : list of slots
+                bert_model : BERT model to use for tokenization
+        '''
         # self.word2id = self.w2id(words, cutoff=cutoff, unk=True)
         self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.pad_token = self.tokenizer.pad_token_id
@@ -19,6 +30,16 @@ class Lang():
         self.id2intent = {v:k for k, v in self.intent2id.items()}
     
     def lab2id(self, elements, pad=True):
+        '''
+            Map labels to integers
+
+            Args:
+                elements : list of labels
+                pad : whether to include the padding token
+
+            Returns:
+                vocab : dictionary mapping labels to integers
+        '''
         vocab = {}
         if pad:
             vocab['pad'] = 0
@@ -27,8 +48,18 @@ class Lang():
         return vocab
 
 class IntentsAndSlots (data.Dataset):
-    # Mandatory methods are __init__, __len__ and __getitem__
+    '''
+        Class to load the dataset
+    '''
+    
     def __init__(self, dataset, lang):
+        '''
+            Initialize the dataset class
+
+            Args:
+                dataset : list of samples
+                lang : Lang object
+        '''
         self.utterances = []
         self.intents = []
         self.slots = []
@@ -43,9 +74,30 @@ class IntentsAndSlots (data.Dataset):
         self.intent_ids = self.mapping_lab(self.intents, lang.intent2id)
 
     def __len__(self):
+        '''
+            Return the length of the dataset
+
+            Returns:
+                length of the dataset
+        '''
         return len(self.utterances)
 
     def __getitem__(self, idx):
+        '''
+            Get an item from the dataset
+
+            Args:
+                idx : index of the item
+
+            Returns:
+                sample : dictionary with the utterance, slots and intent with the following keys:
+                    - utterance : tensor with the utterance tokens
+                    - attention : tensor with the attention mask
+                    - mapping : tensor with the mapping from the utterance to the slots
+                    - sentence : list with the words in the sentence
+                    - slots : tensor with the slots
+                    - intent : tensor with the intent
+        '''
         tokenized = self.tokenizer(self.utterances[idx], return_tensors='pt')
         utt = tokenized['input_ids'][0]
         att = tokenized['attention_mask'][0]
@@ -88,9 +140,15 @@ class IntentsAndSlots (data.Dataset):
     # Auxiliary methods
     
     def mapping_lab(self, data, mapper):
+        '''
+            Map labels to integers
+        '''
         return [mapper[x] if x in mapper else mapper[self.unk] for x in data]
     
     def mapping_seq(self, data, mapper): # Map sequences to number
+        '''
+            Map sequences to integers
+        '''
         res = []
         for seq in data:
             tmp_seq = []
@@ -102,9 +160,27 @@ class IntentsAndSlots (data.Dataset):
 from torch.utils.data import DataLoader
 
 def collate_fn(data, lang, device="cuda"):
+    '''
+        Collate function to prepare the data for the model
+
+        Args:
+            data: list of samples
+            lang: Lang object
+            device: device to use
+
+        Returns:
+            new_item: dictionary with the utterances, intents, slots, slots_len, attention and mapping
+    '''
     def merge(sequences, pad_token):
         '''
-        merge from batch * sent_len to batch * max_len 
+            merge from batch * sent_len to batch * max_len 
+
+            Args:
+                sequences: list of sequences
+                pad_token: token to use for padding
+        
+            Returns:
+                padded_seqs: tensor with the padded sequences
         '''
         # breakpoint()    
         lengths = [len(seq) for seq in sequences]
@@ -133,7 +209,8 @@ def collate_fn(data, lang, device="cuda"):
     mapping_padded, _ = merge(new_item["mapping"], 0)
     intent = torch.LongTensor(new_item["intent"])
     
-    src_utt = src_utt.to(device) # We load the Tensor on our selected device
+    # We load the Tensor on our selected device
+    src_utt = src_utt.to(device) 
     y_slots = y_slots.to(device)
     intent = intent.to(device)
     att_masks = att_masks.to(device)
@@ -159,6 +236,18 @@ def load_data(path):
         return dataset
 
 def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased', device="cuda"):
+    '''
+        Function to load the data and create the dataloaders
+
+        Args:
+            lang: Lang object
+            batchsize: batch size
+            bert_model: BERT model to use for tokenization
+            device: device to use
+
+        Returns:
+            train_loader, dev_loader, test_loader, lang
+    '''
     tmp_train_raw = load_data(os.path.join('..','dataset','ATIS','train.json'))
     test_raw = load_data(os.path.join('..','dataset','ATIS','test.json'))
 
@@ -196,6 +285,7 @@ def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased', devi
     if lang is None:
         lang = Lang(intents, slots, bert_model=bert_model)
 
+    # Create the datasets
     train_dataset = IntentsAndSlots(train_raw, lang)
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)

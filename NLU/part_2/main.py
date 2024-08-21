@@ -19,6 +19,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batchsize = 128 # large is bad, but small requires smaller learning rate
 
 def train():
+    '''
+        This function is used to run the tests
+    '''
+
+    # default test parameters
     tests_base = {
         'device': device,
 
@@ -87,11 +92,15 @@ def train():
         runTest(**test)
 
 def test():
+    '''
+        This function is used to test the saved models
+    '''
     for file in os.listdir('models'):
         print(file)
         #load object        }
         saved_object = torch.load(os.path.join('models', file))
         lang = saved_object['lang']
+
         model_params = saved_object['model_params']
         model = ModelIAS(**model_params).to(device)
         model.load_state_dict(saved_object['model'])
@@ -107,8 +116,6 @@ def test():
         print("\tResults on test set for best saved model:")
         print('\t\tIntent Acc', intent_test['accuracy'])
         print('\t\tSlot F1', results_test['total']['f'])
-
-        # breakpoint()
 
 if __name__ == "__main__":
 

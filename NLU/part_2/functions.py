@@ -13,6 +13,17 @@ from collections import Counter
 from utils import getDataLoaders
 
 def slot_inference(slots, sample, lang):
+    '''
+        Function to perform the slot inference
+
+        Args:
+            slots : tensor with the slot logits
+            sample : sample from the dataset
+            lang : language object
+
+        Returns:
+            The reference and hypothesis slots for the sample
+    '''
     # Slot inference 
     ref_slots = []
     hyp_slots = []
@@ -40,6 +51,17 @@ def slot_inference(slots, sample, lang):
 
 # Function to compute intent weight
 def compute_intent_weight(intent, sample, lang):
+    '''
+        Compute the weight for the intent based on the classification report accuracy
+
+        Args:
+            intent : tensor with the intent logits
+            sample : sample from the dataset
+            lang : language object
+
+        Returns:
+            The weight for the intent Loss
+    '''
     out_intents = torch.argmax(intent, dim=1).tolist()
     gt_intents = torch.tensor(sample['intents']).tolist()
 
@@ -54,6 +76,17 @@ def compute_intent_weight(intent, sample, lang):
 
 # Function to compute slot weight
 def compute_slot_weight(slots, sample, lang):
+    '''
+        Compute the weight for the slot based on the classification report F1
+
+        Args:
+            slots : tensor with the slot logits
+            sample : sample from the dataset
+            lang : language object
+
+        Returns:
+            The weight for the slot Loss
+    '''
     ref_slots_sample, hyp_slots_sample = slot_inference(slots, sample, lang)
     try:
         results = evaluate(ref_slots_sample, hyp_slots_sample)
@@ -64,6 +97,18 @@ def compute_slot_weight(slots, sample, lang):
     return max(1 / f1, 1e-5)
 
 def loss_function(intent, slots, sample, lang):
+    '''
+        Compute the loss function for the model
+
+        Args:
+            intent : tensor with the intent logits
+            slots : tensor with the slot logits
+            sample : sample from the dataset
+            lang : language object
+
+        Returns:
+            The loss value
+    '''
     #define positive weights for the loss function
     intent_count = Counter(sample['intents'].tolist())
     intent_weights = torch.tensor([1/(intent_count[x]+1) for x in lang.id2intent.keys()]).float().to(intent.device)
@@ -92,15 +137,29 @@ def loss_function(intent, slots, sample, lang):
         
 
 def train_loop(data, optimizer, model, lang, clip=5):
+    '''
+        Function to perform the training loop
+
+        Args:
+            data : data to train on
+            optimizer : optimizer to use
+            model : model to train
+            lang : language object
+            clip : gradient clipping
+
+        Returns:
+            The loss array
+    '''
     model.train()
     loss_array = []
     for sample in data:
         optimizer.zero_grad() # Zeroing the gradient
+
         slots, intent = model(sample['utterances'], sample['attention'], sample['mapping'])
 
         loss = loss_function(intent, slots, sample, lang)
-
         loss_array.append(loss.item())
+
         loss.backward() # Compute the gradient, deleting the computational graph
         # clip the gradient to avoid exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
@@ -108,6 +167,17 @@ def train_loop(data, optimizer, model, lang, clip=5):
     return loss_array
 
 def eval_loop(data, model, lang):
+    '''
+        Function to perform the evaluation loop
+
+        Args:
+            data : data to evaluate on
+            model : model to evaluate
+            lang : language object
+
+        Returns:
+            The results, the intent report and the loss array
+    '''
     model.eval()
     loss_array = []
     
@@ -122,10 +192,9 @@ def eval_loop(data, model, lang):
             slots, intents = model(sample['utterances'], sample['attention'], sample['mapping'])
 
             loss = loss_function(intents, slots, sample, lang) 
-
             loss_array.append(loss.item())
+
             # Intent inference
-            # Get the highest probable class
             out_intents = [lang.id2intent[x] 
                            for x in torch.argmax(intents, dim=1).tolist()] 
             gt_intents = [lang.id2intent[x] for x in sample['intents'].tolist()]
@@ -137,6 +206,7 @@ def eval_loop(data, model, lang):
             ref_slots.extend(ref_slots_sample)
             hyp_slots.extend(hyp_slots_sample)
     
+    # Compute the F1 score for the slots
     try:            
         results = evaluate(ref_slots, hyp_slots)
     except Exception as ex:
@@ -147,17 +217,36 @@ def eval_loop(data, model, lang):
         print(hyp_s.difference(ref_s))
         results = {"total":{"f":0}}
 
-        
+    # Compute the classification report for the intents    
     report_intent = classification_report(ref_intents, hyp_intents, 
                                           zero_division=False, output_dict=True)
+    
     return results, report_intent, loss_array
 
 
 def runTest(test_name, device,
             bert_model, dropoutBertEmb, classification_layers_slots, classification_layers_intents,
             runs, n_epochs, lr, clip, patience, batchsize):
+    '''
+        Function to run the requested test
+
+        Args:
+            test_name : name of the test
+            device : device to use
+            bert_model : BERT model to use
+            dropoutBertEmb : dropout for the BERT embeddings
+            classification_layers_slots : list with the number of neurons for each layer in the slot classification
+            classification_layers_intents : list with the number of neurons for each layer in the intent classification
+            runs : number of runs
+            n_epochs : number of epochs
+            lr : learning rate
+            clip : gradient clipping
+            patience : patience for early stopping
+            batchsize : batch size
+    '''
     print("Running test", test_name)
 
+    # Get the data loaders
     train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model, device=device)
     out_slot = len(lang.slot2id)
     out_int = len(lang.intent2id)
@@ -180,11 +269,14 @@ def runTest(test_name, device,
         best_f1 = 0
         best_model = None
         pat = patience
+
         for e in tqdm(range(1,n_epochs)):
             loss = train_loop(train_loader, optimizer, model, clip=clip, lang=lang)
+
             if e % 5 == 0:
                 sampled_epochs.append(e)
                 losses_train.append(np.asarray(loss).mean())
+
                 results_dev, intent_res, loss_dev = eval_loop(dev_loader, model, lang)
                 losses_dev.append(np.asarray(loss_dev).mean())
                 f1 = results_dev['total']['f']
@@ -198,14 +290,17 @@ def runTest(test_name, device,
                     pat -= 1
                 if pat <= 0: # Early stopping with patient
                     break # Not nice but it keeps the code clean
+
         # breakpoint()
         if best_model is None:
             print("No best model found?")
             # breakpoint()
             best_model = model
+
         best_model.to(device)
         results_test, intent_test, _ = eval_loop(test_loader, best_model, lang)
         best_model.to("cpu")
+        
         intent_acc.append(intent_test['accuracy'])
         slot_f1s.append(results_test['total']['f'])
 
@@ -221,12 +316,13 @@ def runTest(test_name, device,
             # plt.title(f"Loss {test_name}")
             # plt.show()
 
-
+    # Compute the mean and std of the results
     slot_f1s = np.asarray(slot_f1s)
     intent_acc = np.asarray(intent_acc)
     print('Slot F1', round(slot_f1s.mean(),3), '+-', round(slot_f1s.std(),3))
     print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
 
+    # Save the model
     PATH = os.path.join("models", test_name+".pt")
     saving_object = {
                   "model": best_model_runs.state_dict(), 

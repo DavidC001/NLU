@@ -6,7 +6,18 @@ from transformers import AutoTokenizer
 from nltk import word_tokenize
 
 class Lang():
+    '''
+        Class to map words, intents and slots to integers
+    '''
     def __init__(self, sentiments, bert_model):
+        '''
+            Initialize the Lang class with the words, intents and slots
+
+            Args:
+                intents : list of intents
+                slots : list of slots
+                bert_model : BERT model to use for tokenization
+        '''
         # self.word2id = self.w2id(words, cutoff=cutoff, unk=True)
         self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.pad_token = self.tokenizer.pad_token_id
@@ -16,6 +27,16 @@ class Lang():
         self.id2sent = {v:k for k, v in self.sent2id.items()}
     
     def lab2id(self, elements, pad=True):
+        '''
+            Map labels to integers
+
+            Args:
+                elements : list of labels
+                pad : whether to include the padding token
+
+            Returns:
+                vocab : dictionary mapping labels to integers
+        '''
         vocab = {}
         if pad:
             vocab['pad'] = 0
@@ -24,8 +45,18 @@ class Lang():
         return vocab
 
 class SADataset (data.Dataset):
-    # Mandatory methods are __init__, __len__ and __getitem__
-    def __init__(self, dataset, lang):
+    '''
+        Class to load the dataset
+    '''
+    
+    def __init__(self, dataset, lang: Lang):
+        '''
+            Initialize the dataset class
+            
+            Args:
+                dataset : list of samples
+                lang : Lang object
+        '''
         self.utterances = []
         self.sentiments = []
         self.words = []
@@ -39,9 +70,26 @@ class SADataset (data.Dataset):
         self.sent_ids = self.mapping_seq(self.sentiments, lang.sent2id)
 
     def __len__(self):
+        '''
+            Return the number of samples in the dataset
+        '''
         return len(self.utterances)
 
     def __getitem__(self, idx):
+        '''
+            Get a sample from the dataset
+
+            Args:
+                idx : index of the sample
+
+            Returns:
+                sample : dictionary with the sample with the following keys:
+                    - utterance : tensor with the utterance
+                    - attention : tensor with the attention mask
+                    - mapping : tensor with the mapping from the utterance to the slots
+                    - sentence : list of words in the utterance
+                    - sentiment : tensor with the sentiment
+        '''
         #join text from list of words
         text = ' '.join(self.words[idx])
         tokenized = self.tokenizer(text, return_tensors='pt')
@@ -86,7 +134,17 @@ class SADataset (data.Dataset):
     
     # Auxiliary methods
     
-    def mapping_seq(self, data, mapper): # Map sequences to number
+    def mapping_seq(self, data, mapper):
+        '''
+            Map sequences to integers
+
+            Args:
+                data : list of sequences
+                mapper : dictionary mapping elements to integers
+
+            Returns:
+                res : list of sequences mapped to integers
+        '''
         res = []
         for seq in data:
             tmp_seq = []
@@ -98,9 +156,27 @@ class SADataset (data.Dataset):
 from torch.utils.data import DataLoader
 
 def collate_fn(data, lang, device="cuda"):
+    '''
+        Collate function to prepare the data for the model
+
+        Args:
+            data : list of examples
+            lang : Lang object
+            device : device to use
+
+        Returns:
+            new_item : dictionary with the utterances, intents, slots and slot lengths padded and on the device
+    '''
     def merge(sequences, pad_token):
         '''
-        merge from batch * sent_len to batch * max_len 
+            merge from batch * sent_len to batch * max_len 
+
+            Args:
+                sequences : list of sequences
+                pad_token : id to use for padding
+
+            Returns:
+                padded_seqs : tensor with the padded sequences
         '''
         # breakpoint()    
         lengths = [len(seq) for seq in sequences]
@@ -126,10 +202,10 @@ def collate_fn(data, lang, device="cuda"):
     src_utt, _ = merge(new_item['utterance'], lang.pad_token)
     y_sents, y_lengths = merge(new_item["sentiment"], lang.label_pad)
     att_masks, _ = merge(new_item["attention"], 0)
-    # breakpoint()
     mapping_padded, _ = merge(new_item["mapping"], 0)
     
-    src_utt = src_utt.to(device) # We load the Tensor on our selected device
+    # Load the data to the device
+    src_utt = src_utt.to(device)
     y_sents = y_sents.to(device)
     att_masks = att_masks.to(device)
     y_lengths = torch.LongTensor(y_lengths).to(device)
@@ -139,13 +215,13 @@ def collate_fn(data, lang, device="cuda"):
     new_item["sent_len"] = y_lengths
     new_item["attention"] = att_masks
     new_item["mapping"] = mapping_padded
-    # breakpoint()
+    
     return new_item
 
 def load_data(path):
         '''
             input: path/to/data
-            output: json 
+            output: list of samples
         '''
         dataset = []
         with open(path, 'r', encoding='utf-8') as f:
@@ -163,6 +239,18 @@ def load_data(path):
         return dataset
 
 def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased', device="cuda"):
+    '''
+        Function to load the data and create the data loaders
+
+        Args:
+            lang : Lang object
+            batchsize : batch size
+            bert_model : BERT model to use for tokenization
+            device : device to use
+
+        Returns:
+            train_loader, dev_loader, test_loader, lang
+    '''
     tmp_train_raw = load_data(os.path.join('..','dataset','laptop14_train.txt'))
     test_raw = load_data(os.path.join('..','dataset','laptop14_test.txt'))
 
@@ -206,6 +294,7 @@ def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased', devi
     if lang is None:
         lang = Lang(sentiments, bert_model=bert_model)
 
+    # load the data
     train_dataset = SADataset(train_raw, lang)
     dev_dataset = SADataset(dev_raw, lang)
     test_dataset = SADataset(test_raw, lang)
