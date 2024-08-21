@@ -53,6 +53,30 @@ def train():
         {
             'bert_model': 'bert-large-cased',
             'test_name': "BERT_large_cased",
+        },
+        {
+            'bert_model': 'bert-base-uncased',
+            'test_name': "BERT_base_uncased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
+        {
+            'bert_model': 'bert-base-cased',
+            'test_name': "BERT_base_cased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
+        {
+            'bert_model': 'bert-large-uncased',
+            'test_name': "BERT_large_uncased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
+        {
+            'bert_model': 'bert-large-cased',
+            'test_name': "BERT_large_cased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
         }
     ]
 
@@ -77,7 +101,7 @@ def test():
         print(f"\t\tIntent Acc: {saved_object['results']['intent_acc']} +/- {saved_object['results']['intent_acc_std']}")
         print(f"\t\tSlot F1: {saved_object['results']['slot_f1']} +/- {saved_object['results']['slot_f1_std']}")
         
-        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang, bert_model=model_params['bert_model'])
+        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang, bert_model=model_params['bert_model'], device=device)
         
         results_test, intent_test, _ = eval_loop(test_loader, model, lang)
         print("\tResults on test set for best saved model:")

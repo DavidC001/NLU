@@ -19,7 +19,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batchsize = 128 # large is bad, but small requires smaller learning rate
 
 def train():
-    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize)
+    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, device=device)
 
     out_slot = len(lang.slot2id)
     out_int = len(lang.intent2id)

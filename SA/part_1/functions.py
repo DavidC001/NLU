@@ -14,10 +14,10 @@ def loss_function(sentiments, sample, lang: Lang):
     # breakpoint()
     sent_count = Counter(sample['y_sents'].flatten().tolist())
     sent_weights = torch.tensor([1/(sent_count[x]+1) for x in lang.id2sent.keys()]).float().to(sentiments.device)
-    criterion_sentiment = nn.CrossEntropyLoss(weight=sent_weights, ignore_index=lang.pad_token)
+    criterion_sentiment = nn.CrossEntropyLoss(weight=sent_weights, ignore_index=lang.label_pad)
 
-    # breakpoint()
     loss = criterion_sentiment(sentiments, sample['y_sents'])
+    # breakpoint()
 
     return loss
         
@@ -30,7 +30,7 @@ def train_loop(data, optimizer, model, lang, clip=5):
 
         # breakpoint()
         loss = loss_function(sentiments, sample, lang)
-
+        
         loss_array.append(loss.item())
         loss.backward() # Compute the gradient, deleting the computational graph
         # clip the gradient to avoid exploding gradients
@@ -183,7 +183,7 @@ def runTest(test_name, device,
             runs, n_epochs, lr, clip, patience, batchsize):
     print("Running test", test_name)
 
-    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model)
+    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model, device=device)
     out_sents = len(lang.sent2id)
 
     macro_f1, micro_f1, precision, recall = [], [], [], []
@@ -225,7 +225,9 @@ def runTest(test_name, device,
             print("No best model found?")
             # breakpoint()
             best_model = model
+        best_model.to(device)
         results_test, _ = eval_loop(test_loader, best_model, lang)
+        best_model.to('cpu')
         
         macro_f1.append(results_test['macro f1'])
         micro_f1.append(results_test['micro f1'])

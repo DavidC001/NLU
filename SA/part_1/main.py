@@ -50,7 +50,26 @@ def train():
             #roberta
             'bert_model': 'roberta-base',
             'test_name': "RoBERTa_base",
-        }
+        },
+        {
+            'bert_model': 'bert-base-uncased',
+            'test_name': "BERT_base_uncased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
+        {
+            'bert_model': 'bert-base-cased',
+            'test_name': "BERT_base_cased-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
+        {
+            #roberta
+            'bert_model': 'roberta-base',
+            'test_name': "RoBERTa_base-drop",
+            'runs': 1,
+            'dropoutBertEmb': 0.5,
+        },
     ]
 
     for test in tests:
@@ -65,6 +84,7 @@ def test():
         #load object        }
         saved_object = torch.load(os.path.join('models', file))
         lang = saved_object['lang']
+
         model_params = saved_object['model_params']
         model = ModelSA(**model_params).to(device)
         model.load_state_dict(saved_object['model'])
@@ -76,7 +96,7 @@ def test():
         print(f"\t\tPrecision: {saved_object['results']['precision']} +/- {saved_object['results']['precision_std']}")
         print(f"\t\tRecall: {saved_object['results']['recall']} +/- {saved_object['results']['recall_std']}")
         
-        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang, bert_model=model_params['bert_model'])
+        _, _, test_loader, lang = getDataLoaders(batchsize=batchsize, lang=lang, bert_model=model_params['bert_model'], device=device)
 
         # evaluate the model
         results_test, _ = eval_loop(test_loader, model, lang)

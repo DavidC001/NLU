@@ -131,7 +131,7 @@ def load_data(path):
             dataset = json.loads(f.read())
         return dataset
 
-def getDataLoaders(lang=None, batchsize=32):
+def getDataLoaders(lang=None, batchsize=32, device="cuda"):
     tmp_train_raw = load_data(os.path.join('..','dataset','ATIS','train.json'))
     test_raw = load_data(os.path.join('..','dataset','ATIS','test.json'))
 
@@ -175,8 +175,8 @@ def getDataLoaders(lang=None, batchsize=32):
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)
 
-    train_loader = DataLoader(train_dataset, batch_size=batchsize, collate_fn=collate_fn,  shuffle=True)
-    dev_loader = DataLoader(dev_dataset, batch_size=batchsize, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=batchsize, collate_fn=collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, device=device), shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, device=device))
+    test_loader = DataLoader(test_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, device=device))
 
     return train_loader, dev_loader, test_loader, lang

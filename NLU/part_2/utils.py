@@ -11,6 +11,7 @@ class Lang():
         # self.word2id = self.w2id(words, cutoff=cutoff, unk=True)
         self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.pad_token = self.tokenizer.pad_token_id
+        self.label_pad = 0
         self.slot2id = self.lab2id(slots)
         self.intent2id = self.lab2id(intents, pad=False)
         # self.id2word = {v:k for k, v in self.word2id.items()}
@@ -20,9 +21,9 @@ class Lang():
     def lab2id(self, elements, pad=True):
         vocab = {}
         if pad:
-            vocab['pad'] = self.pad_token
+            vocab['pad'] = 0
         for elem in elements:
-                vocab[elem] = len(vocab)+self.pad_token
+                vocab[elem] = len(vocab)
         return vocab
 
 class IntentsAndSlots (data.Dataset):
@@ -104,8 +105,8 @@ class IntentsAndSlots (data.Dataset):
 
 from torch.utils.data import DataLoader
 
-def collate_fn(data, device="cuda", pad_token=0):
-    def merge(sequences):
+def collate_fn(data, lang, device="cuda"):
+    def merge(sequences, pad_token):
         '''
         merge from batch * sent_len to batch * max_len 
         '''
@@ -130,10 +131,10 @@ def collate_fn(data, device="cuda", pad_token=0):
         new_item[key] = [d[key] for d in data]
         
     # We just need one length for packed pad seq, since len(utt) == len(slots)
-    src_utt, _ = merge(new_item['utterance'])
-    y_slots, y_lengths = merge(new_item["slots"])
-    att_masks, _ = merge(new_item["attention"])
-    mapping_padded, _ = merge(new_item["mapping"])
+    src_utt, _ = merge(new_item['utterance'], lang.pad_token)
+    y_slots, y_lengths = merge(new_item["slots"], lang.label_pad)
+    att_masks, _ = merge(new_item["attention"], 0)
+    mapping_padded, _ = merge(new_item["mapping"], 0)
     intent = torch.LongTensor(new_item["intent"])
     
     src_utt = src_utt.to(device) # We load the Tensor on our selected device
@@ -161,7 +162,7 @@ def load_data(path):
             dataset = json.loads(f.read())
         return dataset
 
-def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased'):
+def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased', device="cuda"):
     tmp_train_raw = load_data(os.path.join('..','dataset','ATIS','train.json'))
     test_raw = load_data(os.path.join('..','dataset','ATIS','test.json'))
 
@@ -204,8 +205,8 @@ def getDataLoaders(lang=None, batchsize=32, bert_model='bert-base-uncased'):
     test_dataset = IntentsAndSlots(test_raw, lang)
 
     #send pad_token to the collate_fn
-    train_loader = DataLoader(train_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, pad_token=lang.pad_token), shuffle=True)
-    dev_loader = DataLoader(dev_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, pad_token=lang.pad_token))
-    test_loader = DataLoader(test_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, pad_token=lang.pad_token))
+    train_loader = DataLoader(train_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, lang=lang, device=device), shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, lang=lang, device=device))
+    test_loader = DataLoader(test_dataset, batch_size=batchsize, collate_fn=lambda x: collate_fn(x, lang=lang, device=device))
 
     return train_loader, dev_loader, test_loader, lang

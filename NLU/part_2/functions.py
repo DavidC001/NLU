@@ -158,7 +158,7 @@ def runTest(test_name, device,
             runs, n_epochs, lr, clip, patience, batchsize):
     print("Running test", test_name)
 
-    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model)
+    train_loader, dev_loader, test_loader, lang = getDataLoaders(batchsize=batchsize, bert_model=bert_model, device=device)
     out_slot = len(lang.slot2id)
     out_int = len(lang.intent2id)
 
@@ -203,7 +203,9 @@ def runTest(test_name, device,
             print("No best model found?")
             # breakpoint()
             best_model = model
+        best_model.to(device)
         results_test, intent_test, _ = eval_loop(test_loader, best_model, lang)
+        best_model.to("cpu")
         intent_acc.append(intent_test['accuracy'])
         slot_f1s.append(results_test['total']['f'])
 
