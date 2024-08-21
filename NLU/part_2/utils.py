@@ -28,12 +28,11 @@ class Lang():
 
 class IntentsAndSlots (data.Dataset):
     # Mandatory methods are __init__, __len__ and __getitem__
-    def __init__(self, dataset, lang, unk='unk'):
+    def __init__(self, dataset, lang):
         self.utterances = []
         self.intents = []
         self.slots = []
         self.tokenizer = lang.tokenizer
-        self.unk = unk
         
         for x in dataset:
             self.utterances.append(x['utterance'])
@@ -96,10 +95,7 @@ class IntentsAndSlots (data.Dataset):
         for seq in data:
             tmp_seq = []
             for x in seq.split():
-                if x in mapper:
-                    tmp_seq.append(mapper[x])
-                else:
-                    tmp_seq.append(mapper[self.unk])
+                tmp_seq.append(mapper[x])
             res.append(tmp_seq)
         return res
 

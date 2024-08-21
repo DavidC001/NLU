@@ -25,12 +25,11 @@ class Lang():
 
 class SADataset (data.Dataset):
     # Mandatory methods are __init__, __len__ and __getitem__
-    def __init__(self, dataset, lang, unk='unk'):
+    def __init__(self, dataset, lang):
         self.utterances = []
         self.sentiments = []
         self.words = []
         self.tokenizer = lang.tokenizer
-        self.unk = unk
         
         for x in dataset:
             self.utterances.append(x['utterance'])
@@ -92,10 +91,7 @@ class SADataset (data.Dataset):
         for seq in data:
             tmp_seq = []
             for x in seq:
-                if x in mapper:
-                    tmp_seq.append(mapper[x])
-                else:
-                    tmp_seq.append(mapper[self.unk])
+                tmp_seq.append(mapper[x])
             res.append(tmp_seq)
         return res
 
