@@ -101,8 +101,7 @@ def init_weights(mat):
 def train(model, optimizer, exp_name, 
           lang, train_loader, dev_loader, test_loader,
           clip=5, epochs=100, patience=3,
-          tensorboard_folder='tensorboard', models_folder='models', device='cpu',
-          model_folder='models'):
+          tensorboard_folder='tensorboard', models_folder='models', device='cpu'):
     """
     Trains the given model using the specified optimizer and data loaders.
 
@@ -120,7 +119,6 @@ def train(model, optimizer, exp_name,
         tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
         models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
         device (str, optional): The device to be used for training. Defaults to 'cpu'.
-        model_folder (str, optional): The folder path for saving the trained model. Defaults to 'models'.
     """
     
     criterion_train = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
@@ -161,7 +159,7 @@ def train(model, optimizer, exp_name,
     writer.add_scalar('PPL/test', final_ppl, 0)
 
     # Save the best model
-    torch.save(best_model.state_dict(), os.path.join(model_folder, exp_name+".pt"))
+    torch.save(best_model.state_dict(), os.path.join(models_folder, exp_name+".pt"))
 
     writer.close()
 
@@ -225,9 +223,10 @@ def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1]):
         train(model, optimizer, "LSTM_AdamW", lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
 
 def testModel(model, check, test, criterion, model_path):
-    model.load_state_dict(torch.load(os.path.join(model_path, check)))
-    ppl, _ = eval_loop(test, criterion, model)
-    print(f"{check}: {ppl}")
+    if os.path.exists(os.path.join(model_path, check)):
+        model.load_state_dict(torch.load(os.path.join(model_path, check)))
+        ppl, _ = eval_loop(test, criterion, model)
+        print(f"{check}: {ppl}")
 
 def testModels():
     """

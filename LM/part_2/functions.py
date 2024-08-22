@@ -194,28 +194,25 @@ def init_weights(mat):
 def train(model, optimizer, exp_name, 
           lang, train_loader, dev_loader, test_loader,
           clip=5, epochs=100, patience=3,
-          tensorboard_folder='tensorboard', models_folder='models', device='cpu',
-          model_folder='models'):
+          tensorboard_folder='tensorboard', models_folder='models', device='cpu'):
     """
-    Trains the given model using the specified optimizer and data loaders.
+        Trains the given model using the specified optimizer and data loaders.
 
-    Args:
-        model (nn.Module): The model to be trained.
-        optimizer (torch.optim.Optimizer): The optimizer used for training.
-        exp_name (str): The name of the experiment used for logging and saving the model.
-        lang (Language): The language object containing ids of our vocabulary.
-        train_loader (DataLoader): The data loader for training data.
-        dev_loader (DataLoader): The data loader for development data.
-        test_loader (DataLoader): The data loader for test data.
-        clip (float, optional): The maximum gradient allowed. Defaults to 5.
-        epochs (int, optional): The number of training epochs. Defaults to 100.
-        patience (int, optional): The number of epochs to wait for improvement in validation loss before early stopping. Defaults to 3.
-        tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
-        models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
-        device (str, optional): The device to be used for training. Defaults to 'cpu'.
-        model_folder (str, optional): The folder path for saving the trained model. Defaults to 'models'.
+        Args:
+            model (nn.Module): The model to be trained.
+            optimizer (torch.optim.Optimizer): The optimizer used for training.
+            exp_name (str): The name of the experiment used for logging and saving the model.
+            lang (Language): The language object containing ids of our vocabulary.
+            train_loader (DataLoader): The data loader for training data.
+            dev_loader (DataLoader): The data loader for development data.
+            test_loader (DataLoader): The data loader for test data.
+            clip (float, optional): The maximum gradient allowed. Defaults to 5.
+            epochs (int, optional): The number of training epochs. Defaults to 100.
+            patience (int, optional): The number of epochs to wait for improvement in validation loss before early stopping. Defaults to 3.
+            tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
+            models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
+            device (str, optional): The device to be used for training. Defaults to 'cpu'.
     """
-    
     criterion_train = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
     criterion_eval = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"], reduction='sum')
 
@@ -223,6 +220,8 @@ def train(model, optimizer, exp_name,
 
     best_ppl = math.inf
     pat = patience
+    best_model = None
+    best_model_average = None
 
     pbar = tqdm(range(1,epochs))
     #If the PPL is too high try to change the learning rate
@@ -230,15 +229,25 @@ def train(model, optimizer, exp_name,
         loss = train_loop(train_loader, optimizer, criterion_train, model, clip)
 
         if epoch % 1 == 0:
-            ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
+            ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)      
             pbar.set_description("PPL: %f" % ppl_dev)
 
             writer.add_scalar('Loss/train', np.asarray(loss).mean(), epoch)
             writer.add_scalar('Loss/dev', np.asarray(loss_dev).mean(), epoch)
             writer.add_scalar('PPL/dev', ppl_dev, epoch)
 
-            if  ppl_dev < best_ppl: # the lower, the better
+            if 't0' in optimizer.param_groups[0]:
+                    optimizer.average()
+                    ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
+                    optimizer.restore()
+                    writer.add_scalar('PPL/dev_avg', ppl_dev, epoch)
+
+            if  ppl_dev < best_ppl: # the lower, the better (note we are looking at the averaged in case of ASGD)
                 best_ppl = ppl_dev
+                if 't0' in optimizer.param_groups[0]:
+                    optimizer.average()
+                    best_model_average = copy.deepcopy(model)
+                    optimizer.restore()
                 best_model = copy.deepcopy(model)
                 patience = pat
             else:
@@ -253,8 +262,13 @@ def train(model, optimizer, exp_name,
 
     writer.add_scalar('PPL/test', final_ppl, 0)
 
-    # Save the best model
-    torch.save(best_model.state_dict(), os.path.join(model_folder, exp_name+".pt"))
+    if 't0' in optimizer.param_groups[0]:
+        final_ppl,  _ = eval_loop(dev_loader, criterion_eval, best_model_average)
+        writer.add_scalar('PPL/test', final_ppl, 1)
+        torch.save(best_model_average.state_dict(), models_folder+'/'+exp_name+'.pt')
+    else:
+        # Save the best model
+        torch.save(best_model.state_dict(), models_folder+'/'+exp_name+'.pt')
 
     writer.close()
 
@@ -286,7 +300,7 @@ def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1,1,1,1]):
             print(f"Running {exp_name[i]} model with lr={exp_lr[i]}")
             model = copy.deepcopy(LSTM_WT).to(device)
             optimizer = torch.optim.SGD(model.parameters(), lr=exp_lr[i])
-            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, model_folder=model_path)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
     
     # LSTM WT VD
     LSTM_WT_VD_base = LM_LSTM_WT_VD(emb_size=300, hidden_size=300, output_size=len(lang.word2id), emb_dropout=0.25, out_dropout=0.25, n_layers=1).to(device)
@@ -299,7 +313,7 @@ def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1,1,1,1]):
             print(f"Running {exp_name[i]} model with lr={exp_lr[i]}")
             model = copy.deepcopy(LSTM_WT_VD_base).to(device)
             optimizer = torch.optim.SGD(model.parameters(), lr=exp_lr[i])
-            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, model_folder=model_path)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
 
     # LSTM WT VD NT_AvSGD low LR
     criterion = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
@@ -310,12 +324,13 @@ def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1,1,1,1]):
             print(f"Running {exp_name[i]} model with lr={exp_lr[i]}")
             model = copy.deepcopy(LSTM_WT_VD_base).to(device)
             optimizer = NT_AvSGD(model, lr=exp_lr[i], dev_loader=dev_loader, criterion_eval=criterion)
-            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, model_folder=model_path)
+            train(model, optimizer, exp_name[i], lang, train_loader, dev_loader, test_loader, device=device, epochs=epochs, patience=patience, models_folder=model_path)
 
 def testModel(model, check, test, criterion, model_path):
-    model.load_state_dict(torch.load(os.path.join(model_path, check)))
-    ppl, _ = eval_loop(test, criterion, model)
-    print(f"{check}: {ppl}")
+    if os.path.exists(os.path.join(model_path, check)):
+        model.load_state_dict(torch.load(os.path.join(model_path, check)))
+        ppl, _ = eval_loop(test, criterion, model)
+        print(f"{check}: {ppl}")
 
 def testModels():
     """
