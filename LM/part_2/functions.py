@@ -236,7 +236,8 @@ def train(model, optimizer, exp_name,
             writer.add_scalar('Loss/dev', np.asarray(loss_dev).mean(), epoch)
             writer.add_scalar('PPL/dev', ppl_dev, epoch)
 
-            if 't0' in optimizer.param_groups[0]:
+            # T exists in the optimizer only for NT_AvSGD
+            if 'T' in optimizer.__dict__:
                     optimizer.average()
                     ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
                     optimizer.restore()
@@ -244,7 +245,7 @@ def train(model, optimizer, exp_name,
 
             if  ppl_dev < best_ppl: # the lower, the better (note we are looking at the averaged in case of ASGD)
                 best_ppl = ppl_dev
-                if 't0' in optimizer.param_groups[0]:
+                if 'T' in optimizer.__dict__:
                     optimizer.average()
                     best_model_average = copy.deepcopy(model)
                     optimizer.restore()
@@ -262,7 +263,7 @@ def train(model, optimizer, exp_name,
 
     writer.add_scalar('PPL/test', final_ppl, 0)
 
-    if 't0' in optimizer.param_groups[0]:
+    if 'T' in optimizer.__dict__:
         final_ppl,  _ = eval_loop(dev_loader, criterion_eval, best_model_average)
         writer.add_scalar('PPL/test', final_ppl, 1)
         torch.save(best_model_average.state_dict(), models_folder+'/'+exp_name+'.pt')

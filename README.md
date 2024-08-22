@@ -30,15 +30,15 @@ To train them, you can specify the flag `--Train` which will prompt the script t
 ## Repository structure
 ```
   ├── LM             # first assignment
+  |   ├── LM.pdf         # report for the first assignment
   |   └── ...        
   ├── SA             # second assignment
+  |   ├── SA.pdf         # report for the second assignment
   |   └── ...        
   ├── NLU            # third assignment
+  |   ├── NLU.pdf        # report for the third assignment
   |   └── ...        
   |
-  ├── LM.pdf         # report for the first assignment
-  ├── SA.pdf         # report for the second assignment
-  ├── NLU.pdf        # report for the third assignment
   |
   ├── .gitignore     # gitignore file
   ├── README.md      # this file
