@@ -124,14 +124,15 @@ class ModelIAS(nn.Module):
             else:
                 raise ValueError("Invalid combination method")
         
-        # Apply dropout to the hidden states
-        last_hidden = self.dropOut(last_hidden)
-        utt_encoded = self.dropOut(utt_encoded)
-        
         # Apply layer normalization if needed
         if self.layerNorm:
             last_hidden = self.ln(last_hidden)
             utt_encoded = self.ln2(utt_encoded)
+            
+        # Apply dropout to the hidden states
+        last_hidden = self.dropOut(last_hidden)
+        utt_encoded = self.dropOut(utt_encoded)
+        
 
         # Compute slot logits
         slots = self.slot_out(utt_encoded)
