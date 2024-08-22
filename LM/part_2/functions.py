@@ -264,7 +264,7 @@ def train(model, optimizer, exp_name,
     writer.add_scalar('PPL/test', final_ppl, 0)
 
     if 'T' in optimizer.__dict__:
-        final_ppl,  _ = eval_loop(dev_loader, criterion_eval, best_model_average)
+        final_ppl,  _ = eval_loop(test_loader, criterion_eval, best_model_average)
         writer.add_scalar('PPL/test', final_ppl, 1)
         torch.save(best_model_average.state_dict(), models_folder+'/'+exp_name+'.pt')
     else:
