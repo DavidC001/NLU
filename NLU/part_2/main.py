@@ -121,14 +121,10 @@ if __name__ == "__main__":
 
     # define command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--Train', type=bool, default=False)
-    parser.add_argument('--Test', type=bool, default=True)
+    parser.add_argument('--Train', action='store_true') # if the flag is present, the value is True
     args = parser.parse_args()
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if args.Train:
         train()
-
-    if args.Test:
-        test()
+    
+    test()
