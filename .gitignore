@@ -160,5 +160,5 @@ cython_debug/
 #.idea/
 
 KEYS/
-models/
+bin/
 models_old/

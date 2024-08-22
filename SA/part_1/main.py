@@ -83,10 +83,10 @@ def test():
     '''
         This function is used to evaluate the saved models
     '''
-    for file in os.listdir('models'):
+    for file in os.listdir('bin'):
         print(file)
         #load object        }
-        saved_object = torch.load(os.path.join('models', file))
+        saved_object = torch.load(os.path.join('bin', file))
         lang = saved_object['lang']
 
         model_params = saved_object['model_params']

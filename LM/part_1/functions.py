@@ -101,7 +101,7 @@ def init_weights(mat):
 def train(model, optimizer, exp_name, 
           lang, train_loader, dev_loader, test_loader,
           clip=5, epochs=100, patience=3,
-          tensorboard_folder='tensorboard', models_folder='models', device='cpu'):
+          tensorboard_folder='tensorboard', models_folder='bin', device='cpu'):
     """
     Trains the given model using the specified optimizer and data loaders.
 
@@ -117,7 +117,7 @@ def train(model, optimizer, exp_name,
         epochs (int, optional): The number of training epochs. Defaults to 100.
         patience (int, optional): The number of epochs to wait for improvement in validation loss before early stopping. Defaults to 3.
         tensorboard_folder (str, optional): The folder path for TensorBoard logs. Defaults to 'tensorboard'.
-        models_folder (str, optional): The folder path for saving trained models. Defaults to 'models'.
+        models_folder (str, optional): The folder path for saving trained models. Defaults to 'bin'.
         device (str, optional): The device to be used for training. Defaults to 'cpu'.
     """
     
@@ -176,7 +176,7 @@ def runExps(run_exp = [1,1,1,1,1,1,1,1,1,1]):
     patience = 5
 
     #create models dir 
-    model_path = "models"
+    model_path = "bin"
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
@@ -242,7 +242,7 @@ def testModels():
     #RNNs
     baseline = LM_RNN(emb_size=300, hidden_size=300, output_size=len(lang.word2id), n_layers=1).to(device)
     RNNs = ["baseline_lowLR.pt", "baseline.pt", "baseline_higherLR.pt"]
-    model_path = "models"
+    model_path = "bin"
     for check in RNNs:
         testModel(baseline, check, test_loader, criterion_eval, model_path)
 

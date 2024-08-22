@@ -122,11 +122,11 @@ def test():
     """
         Function to test the models saved in the models folder
     """
-    for file in os.listdir('models'):
+    for file in os.listdir('bin'):
         print(file)
 
         # load object
-        saved_object = torch.load(os.path.join('models', file))
+        saved_object = torch.load(os.path.join('bin', file))
         lang = saved_object['lang']
 
         # load the model

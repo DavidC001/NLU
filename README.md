@@ -23,8 +23,8 @@ To execute the script you need to be in the same folder as the `main.py` file an
 ```bash
   python main.py
 ```
-The default behaviour is to only run the evaluation of the saved models in the `models` folder.
-To train them, you can specify the flag `--Train` which will prompt the script to train and save the models in the `models` folder.
+The default behaviour is to only run the evaluation of the saved models in the `bin` folder.
+To train them, you can specify the flag `--Train` which will prompt the script to train and save the models in the `bin` folder.
 
 
 ## Repository structure

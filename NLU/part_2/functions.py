@@ -323,7 +323,7 @@ def runTest(test_name, device,
     print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
 
     # Save the model
-    PATH = os.path.join("models", test_name+".pt")
+    PATH = os.path.join("bin", test_name+".pt")
     saving_object = {
                   "model": best_model_runs.state_dict(), 
                   "model_params": {
